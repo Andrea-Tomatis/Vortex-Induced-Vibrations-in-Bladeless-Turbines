@@ -1,3 +1,20 @@
+"""
+/src/test.py
+
+This is the automatic testing facility. Here all the test infrastructure is contatined.
+You can run all of the test (if you have a lot of time) or run each one individually by calling the
+method test_suite.run_phase_x_...() in the main function.
+
+TODO: THe scaling for the real material stiffness and mass is not tuned perfectly. This phenomenon
+      results in the turbine maximum displacement to be cut by threshold of 50. This can be seen
+      in /analysis_plots/Phase2_Material_Comparison where the plots look like square functions
+      eventhouh they should look like sine(ish) functions.
+      Hint: probably the best way to solve this is to tune the scale_k and scale_m parameters in
+      the run_phase_2_material_optimization(). The report explains what those parameters do.
+
+"""
+
+
 import os
 import json
 from main import run_batch_from_json  # Ensure your previous script is named main.py
@@ -17,8 +34,10 @@ class BladelessTurbineTestSuite:
         run_batch_from_json(filepath)
 
     def run_phase_1_lock_in_sweep(self):
-        """Phase 1: Sweep Wind Speeds (Reynolds numbers) to find the resonance peak."""
+        """Phase 1: Sweep Wind Speeds using stable LBM parameters."""
+        print("Generating Phase 1: Lock-in Sweep...")
         simulations = []
+        
         # Test Reynolds numbers from 150 to 350
         for re in [150, 200, 250, 300, 350]:
             name = f"P1_Re_{re}"
@@ -29,8 +48,17 @@ class BladelessTurbineTestSuite:
                 "video": True, "video_out": f"{self.output_dir}/{name}.mp4",
                 "csv": True, "csv_out": f"{self.output_dir}/{name}.csv",
                 "objects": [
-                    {"shape": "flexible_pole", "cx": 200, "cy": 1, "width": 10, "height": 100, 
-                     "stiffness": 0.005, "mass": 2.0}
+                    {
+                        "shape": "flexible_pole", "cx": 200, "cy": 1, 
+                        "width": 10, "height": 100, 
+                        
+                        # STABLE MATHEMATICAL PARAMETERS
+                        # With F_fluid scaled down to 0.01, this stiffness will 
+                        # bend smoothly into the 15-30 range without exploding.
+                        "stiffness": 0.008,  
+                        "mass": 3.0,
+                        "damping": 0.002
+                    }
                 ]
             })
         
@@ -39,7 +67,7 @@ class BladelessTurbineTestSuite:
     def run_phase_2_material_optimization(self, optimal_re=250.0):
         """Phase 2: Test real-world materials using a scaling factor."""
         
-        # 1. Define the real-world properties of your materials
+        # Define the real-world properties of your materials
         # E = Young's Modulus (Pa), rho = Density (kg/m^3)
         materials = {
             "PVC_Plastic": {"E": 3.0e9, "rho": 1380},
@@ -48,25 +76,25 @@ class BladelessTurbineTestSuite:
             "Carbon_Fiber": {"E": 150.0e9, "rho": 1600}
         }
         
-        # 2. Define the real-world dimensions of your test turbine
+        # Define the real-world dimensions of your test turbine
         height_m = 8.0       # 8 meters tall
         width_m = 0.5        # 0.5 meters wide
         thickness_m = 0.05   # 5 cm wall thickness
         
-        # 3. Choose your LBM Scaling Factors (You may need to tweak these 
+        # Choose your LBM Scaling Factors (You may need to tweak these 
         # slightly so the softest material doesn't bend into infinity)
-        scale_k = 1e-1
+        scale_k = 1e-6
         scale_m = 1e-5
         
         simulations = []
         
         for mat_name, props in materials.items():
-            # A. Calculate Real-World Physics
+            # Calculate Real-World Physics
             I = (width_m * (thickness_m ** 3)) / 12.0
             real_k = (3 * props["E"] * I) / (height_m ** 3)
             real_mass = props["rho"] * height_m * width_m * thickness_m
             
-            # B. Apply Scaling Factor for the LBM Engine
+            # Apply Scaling Factor for the LBM Engine
             lbm_stiffness = real_k * scale_k
             lbm_mass = real_mass * scale_m
             
@@ -149,7 +177,7 @@ if __name__ == "__main__":
     test_suite = BladelessTurbineTestSuite()
     
     # You can run individual phases for quick testing:
-    test_suite.run_phase_1_lock_in_sweep()
+    test_suite.run_phase_2_material_optimization()
     
     # Or let it run overnight for the complete dataset:
     #test_suite.execute_full_thesis_roadmap()

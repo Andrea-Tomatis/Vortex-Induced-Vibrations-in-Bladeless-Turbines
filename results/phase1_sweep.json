@@ -19,8 +19,9 @@
                     "cy": 1,
                     "width": 10,
                     "height": 100,
-                    "stiffness": 0.005,
-                    "mass": 2.0
+                    "stiffness": 0.008,
+                    "mass": 3.0,
+                    "damping": 0.002
                 }
             ]
         },
@@ -43,8 +44,9 @@
                     "cy": 1,
                     "width": 10,
                     "height": 100,
-                    "stiffness": 0.005,
-                    "mass": 2.0
+                    "stiffness": 0.008,
+                    "mass": 3.0,
+                    "damping": 0.002
                 }
             ]
         },
@@ -67,8 +69,9 @@
                     "cy": 1,
                     "width": 10,
                     "height": 100,
-                    "stiffness": 0.005,
-                    "mass": 2.0
+                    "stiffness": 0.008,
+                    "mass": 3.0,
+                    "damping": 0.002
                 }
             ]
         },
@@ -91,8 +94,9 @@
                     "cy": 1,
                     "width": 10,
                     "height": 100,
-                    "stiffness": 0.005,
-                    "mass": 2.0
+                    "stiffness": 0.008,
+                    "mass": 3.0,
+                    "damping": 0.002
                 }
             ]
         },
@@ -115,8 +119,9 @@
                     "cy": 1,
                     "width": 10,
                     "height": 100,
-                    "stiffness": 0.005,
-                    "mass": 2.0
+                    "stiffness": 0.008,
+                    "mass": 3.0,
+                    "damping": 0.002
                 }
             ]
         }
