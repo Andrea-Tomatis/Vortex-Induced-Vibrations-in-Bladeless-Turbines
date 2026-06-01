@@ -1,0 +1,100 @@
+{
+    "simulations": [
+        {
+            "name": "P2_PVC_Plastic",
+            "nx": 600,
+            "ny": 200,
+            "re": 250.0,
+            "steps": 8000,
+            "walls": true,
+            "flow": "uniform",
+            "video": true,
+            "video_out": "../results/P2_PVC_Plastic.mp4",
+            "csv": true,
+            "csv_out": "../results/P2_PVC_Plastic.csv",
+            "objects": [
+                {
+                    "shape": "flexible_pole",
+                    "cx": 200,
+                    "cy": 1,
+                    "width": 10,
+                    "height": 100,
+                    "stiffness": 9.155273437500003e-06,
+                    "mass": 0.0027600000000000003
+                }
+            ]
+        },
+        {
+            "name": "P2_Fiberglass",
+            "nx": 600,
+            "ny": 200,
+            "re": 250.0,
+            "steps": 8000,
+            "walls": true,
+            "flow": "uniform",
+            "video": true,
+            "video_out": "../results/P2_Fiberglass.mp4",
+            "csv": true,
+            "csv_out": "../results/P2_Fiberglass.csv",
+            "objects": [
+                {
+                    "shape": "flexible_pole",
+                    "cx": 200,
+                    "cy": 1,
+                    "width": 10,
+                    "height": 100,
+                    "stiffness": 4.577636718750001e-05,
+                    "mass": 0.0038000000000000004
+                }
+            ]
+        },
+        {
+            "name": "P2_Aluminum",
+            "nx": 600,
+            "ny": 200,
+            "re": 250.0,
+            "steps": 8000,
+            "walls": true,
+            "flow": "uniform",
+            "video": true,
+            "video_out": "../results/P2_Aluminum.mp4",
+            "csv": true,
+            "csv_out": "../results/P2_Aluminum.csv",
+            "objects": [
+                {
+                    "shape": "flexible_pole",
+                    "cx": 200,
+                    "cy": 1,
+                    "width": 10,
+                    "height": 100,
+                    "stiffness": 0.00021057128906250004,
+                    "mass": 0.0054
+                }
+            ]
+        },
+        {
+            "name": "P2_Carbon_Fiber",
+            "nx": 600,
+            "ny": 200,
+            "re": 250.0,
+            "steps": 8000,
+            "walls": true,
+            "flow": "uniform",
+            "video": true,
+            "video_out": "../results/P2_Carbon_Fiber.mp4",
+            "csv": true,
+            "csv_out": "../results/P2_Carbon_Fiber.csv",
+            "objects": [
+                {
+                    "shape": "flexible_pole",
+                    "cx": 200,
+                    "cy": 1,
+                    "width": 10,
+                    "height": 100,
+                    "stiffness": 0.00045776367187500005,
+                    "mass": 0.0032
+                }
+            ]
+        }
+    ]
+}

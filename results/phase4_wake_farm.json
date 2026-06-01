@@ -1,0 +1,55 @@
+{
+    "simulations": [
+        {
+            "name": "P4_Twin_Turbines_InLine",
+            "nx": 1100,
+            "ny": 300,
+            "re": 300.0,
+            "steps": 12000,
+            "walls": true,
+            "flow": "shear",
+            "video": true,
+            "video_out": "../results/P4_Twin_Turbines.mp4",
+            "csv": true,
+            "csv_out": "../results/P4_Twin_Turbines.csv",
+            "objects": [
+                {
+                    "shape": "flexible_pole",
+                    "cx": 200,
+                    "cy": 1,
+                    "width": 15,
+                    "height": 150,
+                    "stiffness": 0.006,
+                    "mass": 2.5
+                },
+                {
+                    "shape": "flexible_pole",
+                    "cx": 450,
+                    "cy": 1,
+                    "width": 15,
+                    "height": 150,
+                    "stiffness": 0.006,
+                    "mass": 2.5
+                },
+                {
+                    "shape": "flexible_pole",
+                    "cx": 700,
+                    "cy": 1,
+                    "width": 15,
+                    "height": 150,
+                    "stiffness": 0.006,
+                    "mass": 2.5
+                },
+                {
+                    "shape": "flexible_pole",
+                    "cx": 950,
+                    "cy": 1,
+                    "width": 15,
+                    "height": 150,
+                    "stiffness": 0.006,
+                    "mass": 2.5
+                }
+            ]
+        }
+    ]
+}

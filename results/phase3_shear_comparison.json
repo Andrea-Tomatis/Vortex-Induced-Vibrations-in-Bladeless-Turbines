@@ -1,0 +1,52 @@
+{
+    "simulations": [
+        {
+            "name": "P3_Flow_Uniform",
+            "nx": 600,
+            "ny": 200,
+            "re": 250.0,
+            "steps": 8000,
+            "walls": true,
+            "flow": "uniform",
+            "video": true,
+            "video_out": "../results/P3_Flow_Uniform.mp4",
+            "csv": true,
+            "csv_out": "../results/P3_Flow_Uniform.csv",
+            "objects": [
+                {
+                    "shape": "flexible_pole",
+                    "cx": 200,
+                    "cy": 1,
+                    "width": 10,
+                    "height": 100,
+                    "stiffness": 0.005,
+                    "mass": 2.0
+                }
+            ]
+        },
+        {
+            "name": "P3_Flow_Shear",
+            "nx": 600,
+            "ny": 200,
+            "re": 250.0,
+            "steps": 8000,
+            "walls": true,
+            "flow": "shear",
+            "video": true,
+            "video_out": "../results/P3_Flow_Shear.mp4",
+            "csv": true,
+            "csv_out": "../results/P3_Flow_Shear.csv",
+            "objects": [
+                {
+                    "shape": "flexible_pole",
+                    "cx": 200,
+                    "cy": 1,
+                    "width": 10,
+                    "height": 100,
+                    "stiffness": 0.005,
+                    "mass": 2.0
+                }
+            ]
+        }
+    ]
+}
