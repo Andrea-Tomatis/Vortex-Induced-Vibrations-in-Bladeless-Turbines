@@ -161,9 +161,6 @@ class FlexibleCantilever(Geometry):
             self.vel += acceleration
             self.delta += self.vel
 
-            self.vel += acceleration
-            self.delta += self.vel
-            
             # If it hits the limit, stop it from winding up
             if self.delta > self.h/2:
                 self.delta = self.h/2
