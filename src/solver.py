@@ -12,7 +12,7 @@ import numpy as np
 import cv2 # type: ignore
 import time
 import csv
-from main import SimConfig
+from sim_config import SimConfig
 from geometry import *
 
 

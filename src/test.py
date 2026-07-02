@@ -5,7 +5,7 @@ This is the automatic testing facility. Here all the test infrastructure is cont
 You can run all of the test (if you have a lot of time) or run each one individually by calling the
 method test_suite.run_phase_x_...() in the main function.
 
-TODO: THe scaling for the real material stiffness and mass is not tuned perfectly. This phenomenon
+TODO: (ALREADY SOLVED) THe scaling for the real material stiffness and mass is not tuned perfectly. This phenomenon
       results in the turbine maximum displacement to be cut by threshold of 50. This can be seen
       in /analysis_plots/Phase2_Material_Comparison where the plots look like square functions
       eventhouh they should look like sine(ish) functions.
@@ -55,8 +55,8 @@ class BladelessTurbineTestSuite:
                         # STABLE MATHEMATICAL PARAMETERS
                         # With F_fluid scaled down to 0.01, this stiffness will 
                         # bend smoothly into the 15-30 range without exploding.
-                        "stiffness": 0.008,  
-                        "mass": 3.0,
+                        "stiffness": 0.0114,  
+                        "mass": 0.095 ,
                         "damping": 0.002
                     }
                 ]
@@ -83,8 +83,8 @@ class BladelessTurbineTestSuite:
         
         # Choose your LBM Scaling Factors (You may need to tweak these 
         # slightly so the softest material doesn't bend into infinity)
-        scale_k = 1e-6
-        scale_m = 1e-5
+        scale_k = 25e-6
+        scale_m = 25e-5
         
         simulations = []
         
@@ -97,6 +97,8 @@ class BladelessTurbineTestSuite:
             # Apply Scaling Factor for the LBM Engine
             lbm_stiffness = real_k * scale_k
             lbm_mass = real_mass * scale_m
+
+            print(lbm_mass, lbm_stiffness)
             
             print(f"[{mat_name}] Real k: {real_k/1000:.1f} kN/m -> LBM k: {lbm_stiffness:.5f}")
             
@@ -147,7 +149,7 @@ class BladelessTurbineTestSuite:
             "video": True, "video_out": f"{self.output_dir}/P4_Twin_Turbines.mp4",
             "csv": True, "csv_out": f"{self.output_dir}/P4_Twin_Turbines.csv",
             "objects": [
-                {"shape": "flexible_pole", "cx": 200, "cy": 1, "width": 15, "height": 150, 
+                {"shape": "flexible_pole", "cx": 200, "cy": 1, "width": 10, "height": 100, 
                  "stiffness": 0.006, "mass": 2.5},
                 # Second turbine placed in the wake of the first
                 {"shape": "flexible_pole", "cx": 450, "cy": 1, "width": 15, "height": 150, 
@@ -177,7 +179,8 @@ if __name__ == "__main__":
     test_suite = BladelessTurbineTestSuite()
     
     # You can run individual phases for quick testing:
-    test_suite.run_phase_2_material_optimization()
+    #test_suite.run_phase_2_material_optimization()
+    test_suite.run_phase_1_lock_in_sweep()
     
     # Or let it run overnight for the complete dataset:
     #test_suite.execute_full_thesis_roadmap()

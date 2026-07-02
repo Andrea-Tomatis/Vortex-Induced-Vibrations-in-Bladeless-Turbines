@@ -15,7 +15,7 @@ for a bladeless turbine.
 Implementation method: In order to implement any new shape it is required
                        to define a new class that inherits from the class Geometry.
 
-TODO: implement new geometries for the blades (i.e. cone, double cone).
+TODO: (optional) implement new geometries for the blades (i.e. cone, double cone).
 """
 
 
