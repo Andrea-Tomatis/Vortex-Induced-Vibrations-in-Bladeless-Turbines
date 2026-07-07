@@ -199,12 +199,18 @@ Using this 2D framework, this project investigates what environmental and mechan
 \section{Theoretical Foundations}
 %=========================================================================
 
-\subsection{Fluid Dynamics Core}
-Traditional computational fluid dynamics solves the macroscopic Navier-Stokes equations for mass and momentum conservation. As fluid flows past a structural bluff body with velocity $U$, it sheds alternating vortices at a frequency dictated by the dimensionless Strouhal number $St$. The vortex shedding frequency $f_v$ is defined as the Strouhal number multiplied by the flow velocity divided by the characteristic diameter $D$:
+\subsection{Fluid Dynamics}
+Traditional computational fluid dynamics solves the macroscopic Navier-Stokes equations for mass and momentum conservation:
+\begin{equation}
+    \rho \left( \frac{\partial \vec{u}}{\partial t} + \vec{u} \cdot \nabla \vec{u} \right) = -\nabla p + \mu \nabla^2 \vec{u}
+\end{equation}
+When these fundamental conservation laws are solved for a fluid stream striking an unconfined bluff body with velocity $U$, the boundary layer separates due to pressure gradients. This structural instability manifests as a predictable wake pattern of alternating low-pressure regions known as a Von Kármán vortex street. 
+
+The vortex shedding frequency ($f_v$) is dictated by the dimensionless Strouhal number ($St$). The frequency is defined as the product of the Strouhal number with the flow velocity divided by diameter $D$:
 \begin{equation}
     f_v = \frac{St \cdot U}{D}
 \end{equation}
-These shedding vortices generate alternating low-pressure zones that exert an alternating transverse lift force on the pole.
+These shedding vortices generate asymmetric, alternating low-pressure zones that exert a periodic transverse lift force on the pole perpendicular to the freestream flow.
 
 \subsection{Structural Mechanics and Cantilever Dynamics}
 The physical mast of a bladeless turbine is modeled fundamentally as a continuous cantilever beam. The exact physical motion of this geometry under a continuous distributed load is governed by the fourth-order partial differential Euler-Bernoulli beam equation:
