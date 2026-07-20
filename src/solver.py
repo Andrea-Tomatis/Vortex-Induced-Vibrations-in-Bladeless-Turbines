@@ -94,10 +94,29 @@ class LatticeBoltzmannSolver:
                 fout[i, :, 0] = self.fin[8-i, :, 0]         # Bottom Wall
                 fout[i, :, -1] = self.fin[8-i, :, -1]       # Top Wall
 
-        # scene boundary: Combine all masks and apply Bounce-back
-        obstacle = self.scene.get_mask(self.X, self.Y, iter_step, rho, u)
+        # scene boundary: Combine all masks and apply moving-wall Bounce-back.
+        #
+        # A stationary wall is the plain reflection fout[i] = fin[8-i]. For a
+        # wall moving with velocity u_w the reflected population carries the
+        # wall's momentum (Ladd 1994; Kruger et al. 2017, "momentum-augmented"
+        # bounce-back):
+        #
+        #     f_ibar = f_i* - 2 w_i rho (c_i . u_w) / c_s^2
+        #
+        # Here fout[i] plays the role of f_ibar and takes fin[8-i], so the c_i
+        # of the formula is v[8-i] = -v[i]. With c_s^2 = 1/3 the two sign flips
+        # leave a POSITIVE correction along v[i]:
+        #
+        #     fout[i] = fin[8-i] + 6 w_i rho (v[i] . u_w)
+        #
+        # Check: summing c_i times the correction gives 2 rho u_w, i.e. momentum
+        # transferred in the direction the wall actually moves.
+        obstacle, u_wall = self.scene.get_mask_and_wall_velocity(
+            self.X, self.Y, iter_step, rho, u)
         for i in range(9):
-            fout[i, obstacle] = self.fin[8-i, obstacle]
+            ci_dot_uw = self.v[i,0] * u_wall[0] + self.v[i,1] * u_wall[1]
+            fout[i, obstacle] = (self.fin[8-i, obstacle]
+                                 + 6.0 * self.t[i] * rho[obstacle] * ci_dot_uw[obstacle])
 
         # 7. Streaming
         for i in range(9):

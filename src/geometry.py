@@ -30,6 +30,14 @@ class Geometry:
     def get_mask(self, X, Y, step, rho=None, u=None):
         raise NotImplementedError()
 
+    def get_wall_velocity(self):
+        """Rigid-body surface velocity (ux, uy) in lattice units.
+
+        Used by the moving-wall bounce-back so the fluid feels the body move.
+        Defaults to a stationary wall.
+        """
+        return (0.0, 0.0)
+
     def get_tracking_data(self):
         """Returns: (Absolute X, Absolute Y, Deflection dX)"""
         return (0.0, 0.0, 0.0)
@@ -43,10 +51,25 @@ class Scene:
 
     # ADD rho and u here as well
     def get_mask(self, X, Y, step, rho=None, u=None):
-        master_mask = np.zeros(X.shape, dtype=bool)
-        for geom in self.geometries:
-            master_mask = master_mask | geom.get_mask(X, Y, step, rho, u)
+        master_mask, _ = self.get_mask_and_wall_velocity(X, Y, step, rho, u)
         return master_mask
+
+    def get_mask_and_wall_velocity(self, X, Y, step, rho=None, u=None):
+        """Return (mask, u_wall) where u_wall[:, i, j] is the surface velocity
+        of whichever body occupies cell (i, j), and zero elsewhere.
+
+        Each body's own velocity is written only into its own cells, so an array
+        of several independently moving turbines is handled correctly.
+        """
+        master_mask = np.zeros(X.shape, dtype=bool)
+        u_wall = np.zeros((2,) + X.shape)
+        for geom in self.geometries:
+            mask = geom.get_mask(X, Y, step, rho, u)
+            wx, wy = geom.get_wall_velocity()
+            u_wall[0][mask] = wx
+            u_wall[1][mask] = wy
+            master_mask = master_mask | mask
+        return master_mask, u_wall
 
 
 #=======================================================================
@@ -97,6 +120,11 @@ class FlexibleCylinder(Geometry):
         current_cy = self.cy_base + self.dy
         self.last_mask = (X - self.cx)**2 + (Y - current_cy)**2 <= self.r**2
         return self.last_mask
+
+    def get_wall_velocity(self):
+        # The cylinder is rigid and translates only along the transverse axis,
+        # so every surface cell shares the single structural velocity vy.
+        return (0.0, self.vy)
 
     def get_tracking_data(self):
         # Track the absolute center coordinates AND the specific deflection dy
