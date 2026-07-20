@@ -63,50 +63,33 @@ def run_batch_from_json(filepath):
             print(f"Warning: No objects defined for {name}. Running empty tunnel.")
 
         for idx, obj_data in enumerate(objects):
-            shape = obj_data.get('shape', 'cylinder')
-            mode = obj_data.get('mode', 'stationary')
-            
+            shape = obj_data.get('shape', 'flexible_cylinder')
+
             # Allow JSON to define exact coordinates, or fallback to defaults
             cx = obj_data.get('cx', cfg.nx // 5)
             cy = obj_data.get('cy', cfg.ny // 2)
             size = obj_data.get('size', cfg.ny // 10)
 
-            amplitude = size * 0.8
-            f_shedding = 0.2 * cfg.uLB / (2 * size)
-
             # Assign Characteristic Length based on the primary (first) object
             if idx == 0:
-                cfg.L_char = (size * 3.0) if shape == 'airfoil' else (size * 2.0)
+                cfg.L_char = size * 2.0
 
             # Generate the Geometry
-            geom = None
-            if shape == 'cylinder':
-                geom = OscillatingCylinder(cx, cy, size, amplitude, f_shedding) if mode == 'oscillating' else StationaryCylinder(cx, cy, size)
-            elif shape == 'rectangle':
-                geom = OscillatingRectangle(cx, cy, size, size*2, amplitude, f_shedding) if mode == 'oscillating' else StationaryRectangle(cx, cy, size, size*2)
-            elif shape == 'airfoil':
-                geom = OscillatingAirfoil(cx, cy, size*3, 0.15, amplitude, f_shedding) if mode == 'oscillating' else StationaryAirfoil(cx, cy, size*3, 0.15)
-            elif shape == 'flexible_pole':
-                geom = FlexibleCantilever(
-                    cx=cx, 
-                    cy_base=obj_data.get('cy', 1),             # Defaults to bottom wall
-                    width=obj_data.get('width', size // 2),    # Decidable width
-                    height=obj_data.get('height', size * 5),   # Decidable height
-                    stiffness=obj_data.get('stiffness', 0.005),# Decidable stiffness
-                    damping=obj_data.get('damping', 0.001),    # Decidable damping friction
-                    mass=obj_data.get('mass', 2.0)             # Decidable mass/weight
+            if shape != 'flexible_cylinder':
+                raise ValueError(
+                    f"Unknown shape '{shape}' in object {idx} of '{name}'. "
+                    f"Only 'flexible_cylinder' is supported."
                 )
-            elif shape == 'flexible_cylinder':
-                geom = FlexibleCylinder(
-                    cx=cx, 
-                    cy_base=obj_data.get('cy', cy), 
-                    r=size, 
-                    stiffness=obj_data.get('stiffness', 0.005),
-                    damping=obj_data.get('damping', 0.001), 
-                    mass=obj_data.get('mass', 2.0)
-                )
-            if geom:
-                main_scene.add_object(geom)
+
+            geom = FlexibleCylinder(
+                cx=cx,
+                cy_base=cy,
+                r=size,
+                stiffness=obj_data.get('stiffness', 0.005),
+                damping=obj_data.get('damping', 0.001),
+                mass=obj_data.get('mass', 2.0)
+            )
+            main_scene.add_object(geom)
 
         # 3. Execute the Simulation
         run_simulation(cfg, main_scene)
@@ -127,9 +110,8 @@ def main():
     parser.add_argument('--flow', type=str, choices=['uniform', 'shear'], default='uniform', help="Choose the inflow velocity profile.") 
 
     # Geometry Parameters
-    parser.add_argument('--shape', type=str, choices=['cylinder', 'rectangle', 'airfoil', 'flexible_pole', 'flexible_cylinder'], default='cylinder')
-    parser.add_argument('--mode', type=str, choices=['stationary', 'oscillating'], default='stationary')
-    parser.add_argument('--multi', action='store_true', help="Adds a secondary oscillating cylinder.")
+    parser.add_argument('--shape', type=str, choices=['flexible_cylinder'], default='flexible_cylinder')
+    parser.add_argument('--multi', action='store_true', help="Adds a secondary flexible cylinder downstream.")
     
     # Output Controls
     parser.add_argument('--video', action='store_true', help="Enable MP4 video rendering.")
@@ -156,49 +138,28 @@ def main():
         )
 
         cx, cy = cfg.nx // 5, cfg.ny // 2
-        size = cfg.ny // 10 
-        amplitude = size * 0.8
-        f_shedding = 0.2 * cfg.uLB / (2 * size)
+        size = cfg.ny // 10
 
         main_scene = Scene()
 
-        if args.shape == 'cylinder':
-            cfg.L_char = size * 2.0
-            primary_geom = OscillatingCylinder(cx, cy, size, amplitude, f_shedding) if args.mode == 'oscillating' else StationaryCylinder(cx, cy, size)
-        elif args.shape == 'rectangle':
-            cfg.L_char = size * 2.0
-            primary_geom = OscillatingRectangle(cx, cy, size, size*2, amplitude, f_shedding) if args.mode == 'oscillating' else StationaryRectangle(cx, cy, size, size*2)
-        elif args.shape == 'airfoil':
-            cfg.L_char = size * 3.0
-            primary_geom = OscillatingAirfoil(cx, cy, size*3, 0.15, amplitude, f_shedding) if args.mode == 'oscillating' else StationaryAirfoil(cx, cy, size*3, 0.15)
-        elif args.shape == 'flexible_pole':
-            cfg.L_char = size * 2.0
-            # A vertical rectangle anchored at the bottom of the grid
-            primary_geom = FlexibleCantilever(
-                cx=cx, 
-                cy_base=1,               # Anchored to bottom wall
-                width=size // 2,         # Thin profile
-                height=cfg.ny // 2,      # Extends halfway up the tunnel
-                stiffness=0.005,         # Low enough to bend
-                damping=0.001,           # Prevents infinite oscillation
-                mass=2.0                 # Inertia
-            )
-        elif args.shape == 'flexible_cylinder':
-            cfg.L_char = size * 2.0
-            # Een cirkel in het bovenaanzicht die reageert op vloeistofkrachten
-            primary_geom = FlexibleCylinder(
-                cx=cx, 
-                cy_base=cy,              # Gecentreerd in de Y-as van het kanaal
-                r=size,                  # De straal van de cilinder
-                stiffness=0.005,         # Veerconstante
-                damping=0.001,           # Dempingsfactor
-                mass=2.0                 # Massa/Inertie
-            )
+        cfg.L_char = size * 2.0
+        # Een cirkel in het bovenaanzicht die reageert op vloeistofkrachten
+        primary_geom = FlexibleCylinder(
+            cx=cx,
+            cy_base=cy,              # Gecentreerd in de Y-as van het kanaal
+            r=size,                  # De straal van de cilinder
+            stiffness=0.005,         # Veerconstante
+            damping=0.001,           # Dempingsfactor
+            mass=2.0                 # Massa/Inertie
+        )
         main_scene.add_object(primary_geom)
 
         if args.multi:
             rear_cx = cx + cfg.nx // 3
-            main_scene.add_object(OscillatingCylinder(rear_cx, cy, size, amplitude, f_shedding))
+            main_scene.add_object(FlexibleCylinder(
+                cx=rear_cx, cy_base=cy, r=size,
+                stiffness=0.005, damping=0.001, mass=2.0
+            ))
 
         run_simulation(cfg, main_scene)
 
