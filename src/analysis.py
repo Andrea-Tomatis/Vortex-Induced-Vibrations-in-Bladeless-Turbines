@@ -258,13 +258,13 @@ class TurbineDataAnalyzer:
 
         df = pd.read_csv(file)
         
-        # 1. Dynamically find ALL flexible poles in the CSV
-        turbines = [name for name in df['Obj_Name'].unique() if 'FlexibleCantilever' in name]
-        
+        # 1. Dynamically find ALL turbines in the CSV
+        turbines = list(df['Obj_Name'].unique())
+
         if not turbines:
-            print("No flexible poles found in the data.")
+            print("No turbines found in the data.")
             return
-            
+
         # Sort them numerically so _0 is first, _1 is second, etc.
         turbines.sort(key=lambda x: int(x.split('_')[-1]))
         
