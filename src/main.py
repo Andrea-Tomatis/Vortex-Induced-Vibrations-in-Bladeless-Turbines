@@ -96,6 +96,15 @@ def run_batch_from_json(filepath):
                     damping=obj_data.get('damping', 0.001),    # Decidable damping friction
                     mass=obj_data.get('mass', 2.0)             # Decidable mass/weight
                 )
+            elif shape == 'flexible_cylinder':
+                geom = FlexibleCylinder(
+                    cx=cx, 
+                    cy_base=obj_data.get('cy', cy), 
+                    r=size, 
+                    stiffness=obj_data.get('stiffness', 0.005),
+                    damping=obj_data.get('damping', 0.001), 
+                    mass=obj_data.get('mass', 2.0)
+                )
             if geom:
                 main_scene.add_object(geom)
 
@@ -118,7 +127,7 @@ def main():
     parser.add_argument('--flow', type=str, choices=['uniform', 'shear'], default='uniform', help="Choose the inflow velocity profile.") 
 
     # Geometry Parameters
-    parser.add_argument('--shape', type=str, choices=['cylinder', 'rectangle', 'airfoil', 'flexible_pole'], default='cylinder')
+    parser.add_argument('--shape', type=str, choices=['cylinder', 'rectangle', 'airfoil', 'flexible_pole', 'flexible_cylinder'], default='cylinder')
     parser.add_argument('--mode', type=str, choices=['stationary', 'oscillating'], default='stationary')
     parser.add_argument('--multi', action='store_true', help="Adds a secondary oscillating cylinder.")
     
@@ -173,6 +182,17 @@ def main():
                 stiffness=0.005,         # Low enough to bend
                 damping=0.001,           # Prevents infinite oscillation
                 mass=2.0                 # Inertia
+            )
+        elif args.shape == 'flexible_cylinder':
+            cfg.L_char = size * 2.0
+            # Een cirkel in het bovenaanzicht die reageert op vloeistofkrachten
+            primary_geom = FlexibleCylinder(
+                cx=cx, 
+                cy_base=cy,              # Gecentreerd in de Y-as van het kanaal
+                r=size,                  # De straal van de cilinder
+                stiffness=0.005,         # Veerconstante
+                damping=0.001,           # Dempingsfactor
+                mass=2.0                 # Massa/Inertie
             )
         main_scene.add_object(primary_geom)
 

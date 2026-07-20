@@ -63,7 +63,7 @@ class StationaryCylinder(Geometry):
         self.cy = cy
         self.r = r
 
-    def get_mask(self, X, Y, step):
+    def get_mask(self, X, Y, step, rho=None, u=None):
         return (X - self.cx)**2 + (Y - self.cy)**2 < self.r**2
 
     def get_tracking_point(self):
@@ -78,7 +78,7 @@ class OscillatingCylinder(Geometry):
         self.f_eigen = f_eigen
         self.current_cy = cy_base
 
-    def get_mask(self, X, Y, step):
+    def get_mask(self, X, Y, step, rho=None, u=None):
         self.current_cy = self.cy_base + self.amplitude * np.sin(2 * np.pi * self.f_eigen * step)
         return (X - self.cx)**2 + (Y - self.current_cy)**2 < self.r**2
 
@@ -97,7 +97,7 @@ class StationaryRectangle(Geometry):
         self.w = width
         self.h = height
 
-    def get_mask(self, X, Y, step):
+    def get_mask(self, X, Y, step, rho=None, u=None):
         # A point is inside the rectangle if its X and Y distances are within half the width/height
         return (np.abs(X - self.cx) <= self.w / 2) & (np.abs(Y - self.cy) <= self.h / 2)
 
@@ -114,7 +114,7 @@ class OscillatingRectangle(Geometry):
         self.f_eigen = f_eigen
         self.current_cy = cy_base
 
-    def get_mask(self, X, Y, step):
+    def get_mask(self, X, Y, step, rho=None, u=None):
         self.current_cy = self.cy_base + self.amplitude * np.sin(2 * np.pi * self.f_eigen * step)
         return (np.abs(X - self.cx) <= self.w / 2) & (np.abs(Y - self.current_cy) <= self.h / 2)
 
@@ -155,6 +155,7 @@ class FlexibleCantilever(Geometry):
             p_up = np.sum(rho[up_x, y_range]) / 3.0
             p_down = np.sum(rho[down_x, y_range]) / 3.0
             F_fluid = (p_up - p_down) * 0.1 # Scale factor to prevent vacuum explosion
+            
 
             # Structural Solver (Euler Integration)
             acceleration = (F_fluid - self.k * self.delta - self.c * self.vel) / self.m
@@ -200,7 +201,7 @@ class StationaryAirfoil(Geometry):
         self.t = thickness    # Maximum thickness as a fraction of the chord (0.12 = NACA 0012)
         self.le_x = cx - chord / 2  # Leading edge X coordinate
 
-    def get_mask(self, X, Y, step):
+    def get_mask(self, X, Y, step, rho=None, u=None):
         # Normalize X coordinates along the chord from 0.0 to 1.0
         x_c = (X - self.le_x) / self.c
         
@@ -234,7 +235,7 @@ class OscillatingAirfoil(Geometry):
         self.f_eigen = f_eigen
         self.current_cy = cy_base
 
-    def get_mask(self, X, Y, step):
+    def get_mask(self, X, Y, step, rho=None, u=None):
         # Update Y position dynamically
         self.current_cy = self.cy_base + self.amplitude * np.sin(2 * np.pi * self.f_eigen * step)
         
@@ -251,3 +252,56 @@ class OscillatingAirfoil(Geometry):
 
     def get_tracking_point(self):
         return (self.cx, self.current_cy)
+
+#=======================================================================
+
+# Flexible Cylinder (Turbine Model - Top-Down View)
+class FlexibleCylinder(Geometry):
+    def __init__(self, cx, cy_base, r, stiffness, damping, mass):
+        self.cx = cx
+        self.cy_base = cy_base
+        self.r = r
+        
+        # Structural Physics Parameters
+        self.k = stiffness
+        self.c = damping
+        self.m = mass
+        
+        # State Variables
+        self.dy = 0.0  # Transverse deflection (lift axis)
+        self.vy = 0.0  # Velocity
+        self.last_mask = None
+
+    def get_mask(self, X, Y, step, rho=None, u=None):
+        # Calculate Fluid Force (If we have fluid data)
+        if rho is not None and self.last_mask is not None:
+            # Measure fluid pressure across the top and bottom of the cylinder
+            # This is a simplified lift calculation for 2D LBM
+            top_y = min(rho.shape[1] - 1, int(self.cy_base + self.dy + self.r + 1))
+            bottom_y = max(0, int(self.cy_base + self.dy - self.r - 1))
+            x_range = slice(int(self.cx - self.r), int(self.cx + self.r))
+
+            # In LBM, pressure p = rho / 3. Force is the difference across the shape.
+            p_top = np.sum(rho[x_range, top_y]) / 3.0
+            p_bottom = np.sum(rho[x_range, bottom_y]) / 3.0
+            
+            # Net Lift Force (pushing along the Y axis)
+            F_lift = (p_bottom - p_top) * 0.1 # Scale factor
+
+            # Structural Solver (Euler Integration for Mass-Spring System)
+            acceleration = (F_lift - self.k * self.dy - self.c * self.vy) / self.m
+            self.vy += acceleration
+            self.dy += self.vy
+
+            # Clip the displacement to prevent the cylinder from leaving the domain
+            max_displacement = self.r * 5 
+            self.dy = np.clip(self.dy, -max_displacement, max_displacement)
+
+        # Generate the moving circular mask
+        current_cy = self.cy_base + self.dy
+        self.last_mask = (X - self.cx)**2 + (Y - current_cy)**2 <= self.r**2
+        return self.last_mask
+
+    def get_tracking_data(self):
+        # Track the absolute center coordinates AND the specific deflection dy
+        return (self.cx, self.cy_base + self.dy, self.dy)
