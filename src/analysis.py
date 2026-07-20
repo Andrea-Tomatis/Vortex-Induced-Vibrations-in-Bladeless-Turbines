@@ -156,91 +156,6 @@ class TurbineDataAnalyzer:
         
         print(f"Saved numerical leaderboard to: {csv_output_path}")
 
-    def analyze_phase_3_shear_flow(self):
-        """Phase 3: Overlays Uniform vs. Shear flow and calculates performance drop."""
-        print("Analyzing Phase 3: Flow Profile Reality Check...")
-        
-        files = glob.glob(os.path.join(self.data_dir, "P3_Flow_*.csv"))
-        if len(files) < 2:
-            print("Could not find both Uniform and Shear files. Skipping.")
-            return
-
-        plt.figure(figsize=(12, 6))
-        colors = {'Uniform': '#2ca02c', 'Shear': '#d62728'}
-        
-        # Dictionary to hold the math for both flows
-        performance_metrics = {}
-
-        for file in files:
-            flow_type = os.path.basename(file).replace('P3_Flow_', '').replace('.csv', '')
-            df = pd.read_csv(file)
-            
-            # Look at a specific steady-state window
-            plot_data = df[(df['Step'] > 4000) & (df['Step'] < 8000)].copy()
-            
-            if plot_data.empty:
-                continue
-
-            # 1. Calculate the Math (Same as Phase 2)
-            amplitude = plot_data['Deflection_dX'].abs().mean()
-            
-            zero_crossings = np.where(np.diff(np.sign(plot_data['Deflection_dX'])))[0]
-            num_cycles = len(zero_crossings) / 2.0
-            time_steps = plot_data['Step'].max() - plot_data['Step'].min()
-            frequency = (num_cycles / time_steps * 1000) if time_steps > 0 else 0
-            
-            power_proxy = (amplitude ** 2) * (frequency ** 2)
-            
-            # Store it for comparison
-            performance_metrics[flow_type] = {
-                'Amplitude': amplitude,
-                'Frequency': frequency,
-                'Power_Proxy': power_proxy
-            }
-            
-            # Plot the line
-            plt.plot(plot_data['Step'], plot_data['Deflection_dX'], 
-                     label=f"{flow_type} Flow", color=colors.get(flow_type, 'blue'), linewidth=2)
-
-        # Format the Graph
-        plt.title('Phase 3: Atmospheric Boundary Layer Impact (Shear vs Uniform)', fontsize=14, fontweight='bold')
-        plt.xlabel('Simulation Step', fontsize=12)
-        plt.ylabel('Tip Deflection ($\Delta X$)', fontsize=12)
-        plt.legend()
-        
-        output_path = os.path.join(self.output_dir, "Phase3_Shear_vs_Uniform.png")
-        plt.savefig(output_path, dpi=300, bbox_inches='tight')
-        plt.close()
-        
-        # ==========================================
-        # PRINT THE QUANTITATIVE INSIGHTS
-        # ==========================================
-        print("\n--- PHASE 3: ATMOSPHERIC BOUNDARY LAYER IMPACT ---")
-        
-        if 'Uniform' in performance_metrics and 'Shear' in performance_metrics:
-            u_data = performance_metrics['Uniform']
-            s_data = performance_metrics['Shear']
-            
-            # Calculate Percentage Drops
-            amp_drop = (1.0 - (s_data['Amplitude'] / u_data['Amplitude'])) * 100
-            pow_drop = (1.0 - (s_data['Power_Proxy'] / u_data['Power_Proxy'])) * 100
-            
-            print(f"[IDEAL] Uniform Flow:")
-            print(f"    Amplitude:   {u_data['Amplitude']:.2f}")
-            print(f"    Frequency:   {u_data['Frequency']:.2f}")
-            print(f"    Power Score: {u_data['Power_Proxy']:.4f}\n")
-            
-            print(f"[REALITY] Shear Flow (Boundary Layer):")
-            print(f"    Amplitude:   {s_data['Amplitude']:.2f}")
-            print(f"    Frequency:   {s_data['Frequency']:.2f}")
-            print(f"    Power Score: {s_data['Power_Proxy']:.4f}\n")
-            
-            print(f"-> IMPACT CONCLUSION:")
-            print(f"   Moving from a wind tunnel to real-world shear flow resulted in a")
-            print(f"   {amp_drop:.1f}% reduction in amplitude and a {pow_drop:.1f}% drop in total power.")
-            
-        print(f"\nSaved Phase 3 plot to {output_path}")
-
     def analyze_phase_4_wake_interference(self):
         """Phase 4: Plots the synchronization of ANY number of twin/array turbines."""
         print("Analyzing Phase 4: Wake Interference (Wind Farm)...")
@@ -329,7 +244,6 @@ class TurbineDataAnalyzer:
         print("==================================================")
         self.analyze_phase_1_resonance()
         self.analyze_phase_2_materials()
-        self.analyze_phase_3_shear_flow()
         self.analyze_phase_4_wake_interference()
         print("\nAll analysis complete! Check the 'analysis_plots' folder.")
 

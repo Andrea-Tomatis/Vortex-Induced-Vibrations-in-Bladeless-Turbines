@@ -32,27 +32,54 @@ from main import run_batch_from_json  # Ensure your previous script is named mai
 
 # Lattice-unit constants shared with SimConfig
 U_LB = 0.04      # Inflow velocity in lattice units
-STROUHAL = 0.2   # Strouhal number for a circular cylinder in the shedding regime
 RHO_LB = 1.0     # Reference lattice density
 
 
-def report_dynamics(label, size, stiffness, mass):
+def strouhal(Re):
+    """Strouhal number for a circular cylinder (Roshko empirical fit).
+
+    St is NOT constant: it climbs from ~0.13 near the shedding onset to an
+    asymptote around 0.21. Because uLB is fixed in this framework, this
+    Re-dependence is the ONLY thing that moves the shedding frequency during a
+    Reynolds sweep, so it must not be approximated as a constant 0.2.
+    """
+    if Re <= 47.0:
+        return 0.0      # below the onset of vortex shedding: steady wake
+    return 0.212 * (1 - 21.2 / Re) if Re < 150 else 0.212 * (1 - 12.7 / Re)
+
+
+def solve_mass_for_reduced_velocity(size, stiffness, u_star):
+    """Return the mass that places the turbine at the requested U*.
+
+    U* = U / (f_n * D) with f_n = sqrt(k/m) / 2*pi, so
+    m = k / (2*pi*f_n)^2 where f_n = U / (U* * D).
+    """
+    D = 2.0 * size
+    f_n = U_LB / (u_star * D)
+    return stiffness / ((2.0 * math.pi * f_n) ** 2)
+
+
+def report_dynamics(label, size, stiffness, mass, Re=None):
     """Print the structural vs. shedding frequency ratio for one turbine.
 
     f_n  natural frequency of the mass-spring system, cycles per lattice step
-    f_s  vortex shedding frequency from the Strouhal relation, St * U / D
+    f_s  vortex shedding frequency from the Strouhal relation, St(Re) * U / D
     U*   reduced velocity, U / (f_n * D); lock-in occurs around U* = 4-8
     m*   mass ratio, structural mass over displaced fluid mass
     """
     D = 2.0 * size
     f_n = math.sqrt(stiffness / mass) / (2.0 * math.pi)
-    f_s = STROUHAL * U_LB / D
     u_star = U_LB / (f_n * D)
     m_star = mass / (RHO_LB * math.pi * size ** 2)
 
     flag = "" if 4.0 <= u_star <= 8.0 else "   <-- outside lock-in band"
-    print(f"  [{label}] f_n={f_n:.3e}  f_s={f_s:.3e}  f_n/f_s={f_n / f_s:7.2f}  "
-          f"U*={u_star:6.3f}  m*={m_star:.2e}{flag}")
+    print(f"  [{label}] f_n={f_n:.3e}  U*={u_star:6.3f}  m*={m_star:6.2f}{flag}")
+
+    # Resonance is governed by f_s/f_n = St(Re) * U*, so it can only be
+    # reported per Reynolds number, not once for the whole sweep.
+    if Re is not None:
+        ratios = "  ".join(f"Re{r}:{strouhal(r) * u_star:.2f}" for r in Re)
+        print(f"      f_s/f_n across sweep -> {ratios}")
 
 
 class BladelessTurbineTestSuite:
@@ -78,14 +105,22 @@ class BladelessTurbineTestSuite:
         # With F_fluid scaled down to 0.01, this stiffness will
         # bend smoothly into the 15-30 range without exploding.
         stiffness = 0.0114
-        mass = 0.095
         size = 15          # Cylinder radius -> D = 30 lattice units
 
-        # The structural response is identical across the sweep; only Re varies.
-        report_dynamics("P1 baseline", size, stiffness, mass)
+        # The mass is SOLVED, not guessed. uLB is fixed, so the only way a pure
+        # Reynolds sweep can cross resonance is through the Re-dependence of the
+        # Strouhal number: f_s/f_n = St(Re) * U*. Choosing U* = 5.89 puts that
+        # crossing near Re = 110, in the middle of the sweep, which gives a
+        # two-sided resonance peak rather than a one-sided plateau.
+        # Stiffness is left untouched so it stays a Phase 2 variable only.
+        mass = solve_mass_for_reduced_velocity(size, stiffness, u_star=5.89)
 
-        # Test Reynolds numbers from 150 to 350
-        for re in [40, 150, 200, 250, 300, 500]:
+        re_points = [60, 80, 100, 120, 150, 200, 250]
+        report_dynamics("P1 baseline", size, stiffness, mass, Re=re_points)
+
+        # Re points clustered below 200: St(Re) saturates near 0.21 above that,
+        # so higher Reynolds numbers are nearly duplicate operating points.
+        for re in re_points:
             name = f"P1_Re_{re}"
             simulations.append({
                 "name": name,
@@ -166,27 +201,6 @@ class BladelessTurbineTestSuite:
 
         self.write_and_run("phase2_real_materials.json", {"simulations": simulations})
 
-    def run_phase_3_shear_flow_reality(self, optimal_re=250.0):
-        """Phase 3: Compare ideal Uniform flow against realistic Shear flow."""
-        report_dynamics("P3 baseline", 15, 0.005, 2.0)
-
-        simulations = []
-        for flow_type in ['uniform', 'shear']:
-            name = f"P3_Flow_{flow_type.capitalize()}"
-            simulations.append({
-                "name": name,
-                "nx": 600, "ny": 200, "re": optimal_re, "steps": 8000,
-                "walls": True, "flow": flow_type,
-                "video": True, "video_out": f"{self.output_dir}/{name}.mp4",
-                "csv": True, "csv_out": f"{self.output_dir}/{name}.csv",
-                "objects": [
-                    {"shape": "flexible_cylinder", "cx": 200, "cy": 100, "size": 15,
-                     "stiffness": 0.005, "mass": 2.0}
-                ]
-            })
-
-        self.write_and_run("phase3_shear_comparison.json", {"simulations": simulations})
-
     def run_phase_4_wake_interference(self):
         """Phase 4: Simulate a twin-turbine wind farm layout."""
         report_dynamics("P4 array member", 15, 0.006, 2.5)
@@ -194,7 +208,11 @@ class BladelessTurbineTestSuite:
         simulations = [{
             "name": "P4_Twin_Turbines_InLine",
             "nx": 1100, "ny": 300, "re": 300.0, "steps": 12000,
-            "walls": True, "flow": "shear", # Testing in realistic shear flow
+            # Uniform inflow: in a top-down slice the cross-stream axis is
+            # horizontal, so a shear gradient here would be a lateral velocity
+            # gradient, not an atmospheric boundary layer. Uniform inflow also
+            # keeps the upstream cylinder's incident flow identical to Phase 1/2.
+            "walls": True, "flow": "uniform",
             "video": True, "video_out": f"{self.output_dir}/P4_Twin_Turbines.mp4",
             "csv": True, "csv_out": f"{self.output_dir}/P4_Twin_Turbines.csv",
             # Identical cylinders spaced along the channel, each sitting in the
@@ -216,7 +234,6 @@ class BladelessTurbineTestSuite:
 
         self.run_phase_1_lock_in_sweep()
         self.run_phase_2_material_optimization(optimal_re=250.0)
-        self.run_phase_3_shear_flow_reality(optimal_re=250.0)
         self.run_phase_4_wake_interference()
 
         print("\nAll experiments completed! Check the 'experiment_results' folder.")
