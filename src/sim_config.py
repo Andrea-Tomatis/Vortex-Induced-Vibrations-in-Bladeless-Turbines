@@ -6,7 +6,7 @@ class SimConfig:
     nx: int = 600
     ny: int = 200
     Re: float = 250.0
-    uLB: float = 0.04
+    uLB: float = 0.02
     max_iter: int = 5000
     L_char: float = 20.0  
     
