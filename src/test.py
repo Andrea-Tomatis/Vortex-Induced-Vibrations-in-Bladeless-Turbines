@@ -150,9 +150,9 @@ class BladelessTurbineTestSuite:
         # E = Young's Modulus (Pa), rho = Density (kg/m^3)
         materials = {
             "PVC_Plastic": {"E": 3.0e9, "rho": 1380},
-            "Fiberglass": {"E": 15.0e9, "rho": 1900},
-            "Aluminum": {"E": 69.0e9, "rho": 2700},
-            "Carbon_Fiber": {"E": 150.0e9, "rho": 1600}
+            # "Fiberglass": {"E": 15.0e9, "rho": 1900},
+            # "Aluminum": {"E": 69.0e9, "rho": 2700},
+            # "Carbon_Fiber": {"E": 150.0e9, "rho": 1600}
         }
 
         # Real-world dimensions of the hollow cylindrical mast
@@ -207,7 +207,7 @@ class BladelessTurbineTestSuite:
             name = f"P2_{mat_name}"
             simulations.append({
                 "name": name,
-                "nx": 600, "ny": 200, "re": optimal_re, "steps": 15000,
+                "nx": 600, "ny": 200, "re": optimal_re, "steps": 8000,
                 "walls": True, "flow": "uniform",
                 "video": True, "video_out": f"{self.output_dir}/{name}.mp4",
                 "csv": True, "csv_out": f"{self.output_dir}/{name}.csv",
@@ -224,27 +224,75 @@ class BladelessTurbineTestSuite:
 
         self.write_and_run("phase2_real_materials.json", {"simulations": simulations})
 
-    def run_phase_4_wake_interference(self):
-        """Phase 4: Simulate a twin-turbine wind farm layout."""
-        report_dynamics("P4 array member", 15, 0.006, 2.5)
+    def run_phase_4_wake_interference(self, optimal_re=250.0):
+        """Phase 4: Simulate a twin-turbine wind farm layout using scaled PVC material properties."""
+        
+        # Material from phase 2 
+        materials = {
+            "PVC_Plastic": {"E": 3.0e9, "rho": 1380}
+        }
 
+        # Real-world measurements of turbine 
+        height_m = 8.0        
+        d_out_m = 0.5         
+        thickness_m = 0.05    
+        d_in_m = d_out_m - (2 * thickness_m)
+
+        size_lbm = 15         # Cilinder radius in LBM pixels
+
+        # Geometric calculations 
+        area = (math.pi / 4.0) * (d_out_m**2 - d_in_m**2)
+        I = (math.pi / 64.0) * (d_out_m**4 - d_in_m**4)
+
+        base_mat = "PVC_Plastic"
+        base_real_k = (3 * materials[base_mat]["E"] * I) / (height_m ** 3)
+        base_real_mass = materials[base_mat]["rho"] * area * height_m
+
+        # LBM target values from test phase 2
+        lbm_target_k = 0.0005   
+        lbm_target_mass = 50.0 
+
+        scale_k = lbm_target_k / base_real_k
+        scale_m = lbm_target_mass / base_real_mass
+
+        props = materials[base_mat]
+        real_k = (3 * props["E"] * I) / (height_m ** 3)
+        real_mass = props["rho"] * area * height_m
+        
+        lbm_stiffness = real_k * scale_k
+        lbm_mass = real_mass * scale_m
+
+        real_fn = (1 / (2 * math.pi)) * math.sqrt(real_k / real_mass)
+        lbm_fn = (1 / (2 * math.pi)) * math.sqrt(lbm_stiffness / lbm_mass)
+
+        print(f"[P4 PVC array] Real k: {real_k/1000:.1f} kN/m, Mass: {real_mass:.1f} kg")
+        print(f"    -> LBM k: {lbm_stiffness:.5f}, LBM Mass: {lbm_mass:.5f}")
+        print(f"    -> Freq mapping: Real fn={real_fn:.2f} Hz -> LBM fn={lbm_fn:.4f}")
+
+        # 4 PVC turbines in ine 
         simulations = [{
             "name": "P4_Twin_Turbines_InLine",
-            "nx": 1100, "ny": 300, "re": 300.0, "steps": 12000,
-            # Uniform inflow: in a top-down slice the cross-stream axis is
-            # horizontal, so a shear gradient here would be a lateral velocity
-            # gradient, not an atmospheric boundary layer. Uniform inflow also
-            # keeps the upstream cylinder's incident flow identical to Phase 1/2.
-            "walls": True, "flow": "uniform",
-            "video": True, "video_out": f"{self.output_dir}/P4_Twin_Turbines.mp4",
-            "csv": True, "csv_out": f"{self.output_dir}/P4_Twin_Turbines.csv",
-            # Identical cylinders spaced along the channel, each sitting in the
-            # wake of the one before it. Keeping them identical means any drop in
-            # downstream amplitude is attributable to the wake, not to geometry.
+            "nx": 1200, 
+            "ny": 300, 
+            "re": optimal_re, 
+            "steps": 12000,
+            "walls": True, 
+            "flow": "uniform",
+            "video": True, 
+            "video_out": f"{self.output_dir}/P4_Twin_Turbines.mp4",
+            "csv": True, 
+            "csv_out": f"{self.output_dir}/P4_Twin_Turbines_InLine.csv",
+            
             "objects": [
-                {"shape": "flexible_cylinder", "cx": cx, "cy": 150, "size": 15,
-                 "stiffness": 0.006, "mass": 2.5}
-                for cx in [200, 450, 700, 950]
+                {
+                    "shape": "flexible_cylinder", 
+                    "cx": cx, 
+                    "cy": 150, 
+                    "size": size_lbm,
+                    "stiffness": lbm_stiffness, 
+                    "mass": lbm_mass
+                }
+                for cx in [200, 450, 700, 950] # 4 positions 
             ]
         }]
 
@@ -265,8 +313,9 @@ if __name__ == "__main__":
     test_suite = BladelessTurbineTestSuite()
 
     # You can run individual phases for quick testing:
-    test_suite.run_phase_2_material_optimization()
-    #test_suite.run_phase_1_lock_in_sweep()
+    # test_suite.run_phase_2_material_optimization()
+    # test_suite.run_phase_1_lock_in_sweep()
+    test_suite.run_phase_4_wake_interference()
 
     # Or let it run overnight for the complete dataset:
     #test_suite.execute_full_thesis_roadmap()
