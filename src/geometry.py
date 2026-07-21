@@ -112,8 +112,26 @@ class FlexibleCylinder(Geometry):
 
             # Safety Guardrails against LBM numerical explosions (NaNs/Infs)
             max_disp = self.r * 1.5
-            self.dy = 0.0 if np.isnan(self.dy) else float(np.clip(self.dy, -max_disp, max_disp))
-            self.vy = 0.0 if np.isnan(self.vy) else self.vy
+
+            # The wall velocity is fed back into the fluid by the moving-wall
+            # bounce-back, so an unbounded vy does not stay contained in the
+            # structure: it injects momentum into the lattice and blows the
+            # simulation up. vy must therefore be bounded as strictly as dy.
+            # The cap is a fraction of the lattice sound speed (c_s = 1/sqrt(3));
+            # a boundary moving faster than that is unphysical for LBM anyway.
+            max_vel = 0.1 / np.sqrt(3.0)
+
+            if np.isnan(self.dy) or np.isnan(self.vy):
+                self.dy, self.vy = 0.0, 0.0
+            else:
+                self.dy = float(np.clip(self.dy, -max_disp, max_disp))
+                self.vy = float(np.clip(self.vy, -max_vel, max_vel))
+
+                # Hitting the displacement limit must also kill the velocity.
+                # Clamping position while letting vy keep accumulating breaks the
+                # energy balance and pumps the oscillator instead of arresting it.
+                if abs(self.dy) >= max_disp:
+                    self.vy = 0.0
 
         # Generate the moving circular mask
         current_cy = self.cy_base + self.dy
