@@ -83,13 +83,18 @@ class TurbineDataAnalyzer:
             print("No Phase 2 files found. Skipping.")
             return
 
-        plt.figure(figsize=(12, 6))
+        # VERBETERING: Twee plots onder elkaar. 
+        # ax1 = het totaaloverzicht, ax2 = een ingezoomd stuk voor leesbaarheid (lost de TODO op)
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), sharex=False)
         
         # Store results for a performance leaderboard
         performance_data = []
         
         for file in files:
-            mat_name = os.path.basename(file).replace('P2_', '').replace('.csv', '')
+            # Maak de naam netjes voor de legenda (bijv. "P2_PVC_Plastic.csv" -> "PVC Plastic")
+            raw_name = os.path.basename(file).replace('P2_', '').replace('.csv', '')
+            mat_name = raw_name.replace('_', ' ')
+            
             df = pd.read_csv(file)
             
             # Analyze steady-state oscillation (ignore startup)
@@ -99,16 +104,11 @@ class TurbineDataAnalyzer:
                 continue
 
             # 1. Calculate Amplitude (A)
-            # We take the root mean square (RMS) or simple mean of the absolute peaks
             amplitude = plot_data['Deflection_dX'].abs().mean()
             
             # 2. Calculate Frequency (f)
-            # We count how many times the pole crosses the zero-axis (center point)
             zero_crossings = np.where(np.diff(np.sign(plot_data['Deflection_dX'])))[0]
-            # Two zero crossings equal one full wave cycle
             num_cycles = len(zero_crossings) / 2.0
-            
-            # Frequency = Cycles per step (or time)
             time_steps = plot_data['Step'].max() - plot_data['Step'].min()
             frequency = num_cycles / time_steps if time_steps > 0 else 0
             
@@ -122,14 +122,25 @@ class TurbineDataAnalyzer:
                 'Power_Proxy': power_proxy
             })
             
-            plt.plot(plot_data['Step'], plot_data['Deflection_dX'], label=mat_name, linewidth=1.5)
+            # TOP PLOT: Volledige overzicht (gebruik lagere alpha/dikte zodat het niet één dikke vlek wordt)
+            ax1.plot(plot_data['Step'], plot_data['Deflection_dX'], label=mat_name, linewidth=1.0, alpha=0.7)
 
-        # Plot Formatting
-        plt.title('Phase 2: Material Deflection Comparison', fontsize=14, fontweight='bold')
-        plt.xlabel('Simulation Step', fontsize=12)
-        plt.ylabel('Tip Deflection ($\Delta X$)', fontsize=12)
-        plt.legend(loc='upper right')
+            # BOTTOM PLOT: Zoom in op een specifiek tijdsframe (bijv. stap 5000 tot 6000)
+            zoom_data = df[(df['Step'] > 5000) & (df['Step'] < 6000)].copy()
+            ax2.plot(zoom_data['Step'], zoom_data['Deflection_dX'], label=mat_name, linewidth=2.0)
+
+        # Plot Formatting: Top Plot (Full Range)
+        ax1.set_title('Phase 2: Full Steady-State Oscillation Overview', fontsize=14, fontweight='bold')
+        ax1.set_ylabel('Tip Deflection ($\Delta X$)', fontsize=12)
+        ax1.legend(loc='upper right')
         
+        # Plot Formatting: Bottom Plot (Zoomed for Readability)
+        ax2.set_title('Phase 2: Zoomed View (Clear Waveform Comparison)', fontsize=14, fontweight='bold')
+        ax2.set_xlabel('Simulation Step', fontsize=12)
+        ax2.set_ylabel('Tip Deflection ($\Delta X$)', fontsize=12)
+        ax2.legend(loc='upper right')
+        
+        plt.tight_layout()
         output_path = os.path.join(self.output_dir, "Phase2_Material_Comparison.png")
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         plt.close()
@@ -148,7 +159,7 @@ class TurbineDataAnalyzer:
         print(f"Saved {output_path}")
         leaderboard_df = pd.DataFrame(performance_data)
         
-        # Reorder columns so they look nice in Excel
+        # Reorder columns so they look nice in Excel/CSV
         leaderboard_df = leaderboard_df[['Material', 'Power_Proxy', 'Amplitude', 'Frequency']]
         
         csv_output_path = os.path.join(self.output_dir, "Phase2_Efficiency_Leaderboard.csv")
@@ -242,9 +253,9 @@ class TurbineDataAnalyzer:
         print("==================================================")
         print("STARTING DATA ANALYSIS PIPELINE")
         print("==================================================")
-        self.analyze_phase_1_resonance()
+        # self.analyze_phase_1_resonance()
         self.analyze_phase_2_materials()
-        self.analyze_phase_4_wake_interference()
+        # self.analyze_phase_4_wake_interference()
         print("\nAll analysis complete! Check the 'analysis_plots' folder.")
 
 if __name__ == "__main__":

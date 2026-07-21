@@ -49,7 +49,6 @@ class Scene:
     def add_object(self, geometry: Geometry):
         self.geometries.append(geometry)
 
-    # ADD rho and u here as well
     def get_mask(self, X, Y, step, rho=None, u=None):
         master_mask, _ = self.get_mask_and_wall_velocity(X, Y, step, rho, u)
         return master_mask
@@ -95,7 +94,6 @@ class FlexibleCylinder(Geometry):
         # Calculate Fluid Force (If we have fluid data)
         if rho is not None and self.last_mask is not None:
             # Measure fluid pressure across the top and bottom of the cylinder
-            # This is a simplified lift calculation for 2D LBM
             top_y = min(rho.shape[1] - 1, int(self.cy_base + self.dy + self.r + 1))
             bottom_y = max(0, int(self.cy_base + self.dy - self.r - 1))
             x_range = slice(int(self.cx - self.r), int(self.cx + self.r))
@@ -112,9 +110,10 @@ class FlexibleCylinder(Geometry):
             self.vy += acceleration
             self.dy += self.vy
 
-            # Clip the displacement to prevent the cylinder from leaving the domain
-            max_displacement = self.r * 5
-            self.dy = np.clip(self.dy, -max_displacement, max_displacement)
+            # Safety Guardrails against LBM numerical explosions (NaNs/Infs)
+            max_disp = self.r * 1.5
+            self.dy = 0.0 if np.isnan(self.dy) else float(np.clip(self.dy, -max_disp, max_disp))
+            self.vy = 0.0 if np.isnan(self.vy) else self.vy
 
         # Generate the moving circular mask
         current_cy = self.cy_base + self.dy

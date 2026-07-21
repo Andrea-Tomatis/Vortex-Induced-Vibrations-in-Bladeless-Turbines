@@ -31,7 +31,7 @@ import math
 from main import run_batch_from_json  # Ensure your previous script is named main.py
 
 # Lattice-unit constants shared with SimConfig
-U_LB = 0.04      # Inflow velocity in lattice units
+U_LB = 0.02      # Inflow velocity in lattice units
 RHO_LB = 1.0     # Reference lattice density
 
 
@@ -142,10 +142,11 @@ class BladelessTurbineTestSuite:
 
         self.write_and_run("phase1_sweep.json", {"simulations": simulations})
 
-    def run_phase_2_material_optimization(self, optimal_re=250.0):
-        """Phase 2: Test real-world materials using a scaling factor."""
 
-        # Define the real-world properties of your materials
+    def run_phase_2_material_optimization(self, optimal_re=250.0):
+        """Phase 2: Test real-world materials using proportional non-dimensional scaling."""
+
+        # Real-world values for tested materials 
         # E = Young's Modulus (Pa), rho = Density (kg/m^3)
         materials = {
             "PVC_Plastic": {"E": 3.0e9, "rho": 1380},
@@ -154,37 +155,59 @@ class BladelessTurbineTestSuite:
             "Carbon_Fiber": {"E": 150.0e9, "rho": 1600}
         }
 
-        # Define the real-world dimensions of your test turbine
-        height_m = 8.0       # 8 meters tall
-        width_m = 0.5        # 0.5 meters wide
-        thickness_m = 0.05   # 5 cm wall thickness
+        # Real-world dimensions of the hollow cylindrical mast
+        height_m = 8.0       
+        d_out_m = 0.5        # outer diameter
+        thickness_m = 0.05   # wall thickness
+        d_in_m = d_out_m - (2 * thickness_m) # inner diameter
 
-        # Choose your LBM Scaling Factors (You may need to tweak these
-        # slightly so the softest material doesn't bend into infinity)
-        scale_k = 25e-6
-        scale_m = 25e-5
+        size_lbm = 15        # Cylinder radius in LBM pixels
 
-        size = 15            # Cylinder radius, identical across all materials
+        # Calculate exact geometric properties for a hollow cylinder
+        area = (math.pi / 4.0) * (d_out_m**2 - d_in_m**2)
+        I = (math.pi / 64.0) * (d_out_m**4 - d_in_m**4)
+
+        # To keep LBM numerically stable, we pick a baseline material (PVC) 
+        # and define our safe LBM limits for that specific material.
+        # All other materials will be scaled relative to this baseline.
+        base_mat = "PVC_Plastic"
+        base_real_k = (3 * materials[base_mat]["E"] * I) / (height_m ** 3)
+        base_real_mass = materials[base_mat]["rho"] * area * height_m
+
+        # Define stable LBM values for the baseline material 
+        lbm_target_k = 0.0005   
+        lbm_target_mass = 50.0 
+
+        # Establish global scaling factors that apply to ALL materials uniformly
+        scale_k = lbm_target_k / base_real_k
+        scale_m = lbm_target_mass / base_real_mass
 
         simulations = []
 
         for mat_name, props in materials.items():
-            # Calculate Real-World Physics
-            I = (width_m * (thickness_m ** 3)) / 12.0
+            # 1. Real-World Physics (Cantilever beam mechanics)
             real_k = (3 * props["E"] * I) / (height_m ** 3)
-            real_mass = props["rho"] * height_m * width_m * thickness_m
-
-            # Apply Scaling Factor for the LBM Engine
+            real_mass = props["rho"] * area * height_m
+            
+            # 2. Apply Proportional LBM Scaling
             lbm_stiffness = real_k * scale_k
             lbm_mass = real_mass * scale_m
 
-            print(f"[{mat_name}] Real k: {real_k/1000:.1f} kN/m -> LBM k: {lbm_stiffness:.5f}")
-            report_dynamics(mat_name, size, lbm_stiffness, lbm_mass)
+            # Calculate natural frequency to verify scaling (fn = 1/(2*pi) * sqrt(k/m))
+            real_fn = (1 / (2 * math.pi)) * math.sqrt(real_k / real_mass)
+            lbm_fn = (1 / (2 * math.pi)) * math.sqrt(lbm_stiffness / lbm_mass)
+
+            print(f"[{mat_name}] Real k: {real_k/1000:.1f} kN/m, Mass: {real_mass:.1f} kg")
+            print(f"      -> LBM k: {lbm_stiffness:.5f}, LBM Mass: {lbm_mass:.5f}")
+            print(f"      -> Freq mapping: Real fn={real_fn:.2f} Hz -> LBM fn={lbm_fn:.4f}")
+            
+            # Assuming report_dynamics is an external function you built
+            # report_dynamics(mat_name, size_lbm, lbm_stiffness, lbm_mass)
 
             name = f"P2_{mat_name}"
             simulations.append({
                 "name": name,
-                "nx": 600, "ny": 200, "re": optimal_re, "steps": 8000,
+                "nx": 600, "ny": 200, "re": optimal_re, "steps": 15000,
                 "walls": True, "flow": "uniform",
                 "video": True, "video_out": f"{self.output_dir}/{name}.mp4",
                 "csv": True, "csv_out": f"{self.output_dir}/{name}.csv",
@@ -192,9 +215,9 @@ class BladelessTurbineTestSuite:
                     {
                         "shape": "flexible_cylinder",
                         "cx": 200, "cy": 100,
-                        "size": size,
-                        "stiffness": lbm_stiffness,  # The scaled real-world value!
-                        "mass": lbm_mass             # The scaled real-world value!
+                        "size": size_lbm,
+                        "stiffness": lbm_stiffness,
+                        "mass": lbm_mass 
                     }
                 ]
             })
@@ -242,8 +265,8 @@ if __name__ == "__main__":
     test_suite = BladelessTurbineTestSuite()
 
     # You can run individual phases for quick testing:
-    #test_suite.run_phase_2_material_optimization()
-    test_suite.run_phase_1_lock_in_sweep()
+    test_suite.run_phase_2_material_optimization()
+    #test_suite.run_phase_1_lock_in_sweep()
 
     # Or let it run overnight for the complete dataset:
     #test_suite.execute_full_thesis_roadmap()
