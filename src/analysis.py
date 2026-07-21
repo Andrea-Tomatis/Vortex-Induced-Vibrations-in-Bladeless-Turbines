@@ -27,52 +27,145 @@ class TurbineDataAnalyzer:
         # Use a professional plotting style
         plt.style.use('seaborn-v0_8-darkgrid')
 
-    def analyze_phase_1_resonance(self):
-        """Phase 1: Plots the Lock-in Resonance Curve (Amplitude vs. Wind Speed)"""
-        print("Analyzing Phase 1: Lock-in Sweep...")
+    # def analyze_phase_1_resonance(self):
+    #     """Phase 1: Plots the Lock-in Resonance Curve (Amplitude vs. Wind Speed)"""
+    #     print("Analyzing Phase 1: Lock-in Sweep...")
         
-        # Find all Phase 1 CSV files
-        files = glob.glob(os.path.join(self.data_dir, "P1_Re_*.csv"))
-        if not files:
-            print("No Phase 1 files found. Skipping.")
+    #     # Find all Phase 1 CSV files
+    #     files = glob.glob(os.path.join(self.data_dir, "P1_Re_*.csv"))
+    #     if not files:
+    #         print("No Phase 1 files found. Skipping.")
+    #         return
+
+    #     re_values = []
+    #     max_amplitudes = []
+
+    #     for file in files:
+    #         # Extract the Reynolds number from the filename (e.g., P1_Re_150.csv -> 150)
+    #         re = float(file.split('P1_Re_')[-1].replace('.csv', ''))
+    #         df = pd.read_csv(file)
+            
+    #         # We ignore the first 1000 steps to let the fluid "spin up" and settle
+    #         steady_state = df[df['Step'] > 1000]
+            
+    #         # Find the maximum absolute deflection
+    #         max_amp = steady_state['Deflection_dX'].abs().max()
+            
+    #         re_values.append(re)
+    #         max_amplitudes.append(max_amp)
+
+    #     # Sort the data mathematically
+    #     sorted_indices = np.argsort(re_values)
+    #     re_values = np.array(re_values)[sorted_indices]
+    #     max_amplitudes = np.array(max_amplitudes)[sorted_indices]
+
+    #     # Plot the Resonance Bell Curve
+    #     plt.figure(figsize=(10, 6))
+    #     plt.plot(re_values, max_amplitudes, marker='o', linestyle='-', linewidth=2, color='b')
+    #     plt.title('Phase 1: Lock-in Resonance Curve', fontsize=14, fontweight='bold')
+    #     plt.xlabel('Wind Speed (Reynolds Number)', fontsize=12)
+    #     plt.ylabel('Maximum Displacement ($\Delta Y$)', fontsize=12)
+    #     plt.fill_between(re_values, max_amplitudes, alpha=0.2, color='b')
+    #     plt.ylim(max(max_amplitudes)*0.8, max(max_amplitudes)*1.2)
+        
+    #     # Save and close
+    #     output_path = os.path.join(self.output_dir, "Phase1_Resonance_Curve.png")
+    #     plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    #     plt.close()
+    #     print(f"Saved {output_path}")
+
+    # New version:
+    def analyze_phase_1_resonance(self):
+        """Phase 1: Demonstrates the Optimal Reynolds number (Lock-in effect)."""
+        print("Analyzing Phase 1: Finding Optimal Reynolds Number...")
+        
+        data_dict = {}
+        global_max_abs = 0.0
+
+        # Loop over all Phase 1 files
+        for filename in os.listdir(self.data_dir):
+            if filename.startswith("P1_Re_") and filename.endswith(".csv"):
+                # Extract Reynolds number
+                try:
+                    re_str = filename.replace("P1_Re_", "").replace(".csv", "")
+                    re = float(re_str)
+                except ValueError:
+                    continue
+
+                filepath = os.path.join(self.data_dir, filename)
+                df = pd.read_csv(filepath)
+
+                # Determine correct column names
+                step_col = 'Step' if 'Step' in df.columns else 'Time' if 'Time' in df.columns else df.columns[0]
+                y_col = 'Deflection_dX' if 'Deflection_dX' in df.columns else None
+
+                if y_col is None:
+                    print(f"Warning: Could not find displacement column in {filename}")
+                    continue
+
+                # Focus purely on the tail end of the simulation (last 20%)
+                # Dit negeert de initiële piek en meet alleen of de trilling zichzelf in stand houdt
+                tail_start = df[step_col].max() * 0.80
+                steady_state = df[df[step_col] > tail_start]
+                
+                if steady_state.empty:
+                    continue
+
+                # 1. Determine Absolute Maximum voor de assen van de grafiek
+                abs_max = max(abs(steady_state[y_col].max()), abs(steady_state[y_col].min()))
+                if abs_max > global_max_abs:
+                    global_max_abs = abs_max
+
+                # 2. Bereken de standaarddeviatie over dit laatste stukje
+                # Dit meet de pure trilling (AC) en negeert statische buiging (DC)
+                rms_amp = steady_state[y_col].std()
+
+                # Save to dictionary
+                data_dict[re] = {
+                    'rms_amp': rms_amp
+                }
+
+        if not data_dict:
+            print("No Phase 1 data found.")
             return
 
-        re_values = []
-        max_amplitudes = []
+        # Sort data by Reynolds number
+        sorted_re = sorted(data_dict.keys())
+        rms_amps = [data_dict[re]['rms_amp'] for re in sorted_re]
 
-        for file in files:
-            # Extract the Reynolds number from the filename (e.g., P1_Re_150.csv -> 150)
-            re = float(file.split('P1_Re_')[-1].replace('.csv', ''))
-            df = pd.read_csv(file)
-            
-            # We ignore the first 1000 steps to let the fluid "spin up" and settle
-            steady_state = df[df['Step'] > 1000]
-            
-            # Find the maximum absolute deflection
-            max_amp = steady_state['Deflection_dX'].abs().max()
-            
-            re_values.append(re)
-            max_amplitudes.append(max_amp)
+        # Find the optimal point (maximum sustained vibration)
+        optimal_re_idx = np.argmax(rms_amps)
+        optimal_re = sorted_re[optimal_re_idx]
+        optimal_amp = rms_amps[optimal_re_idx]
 
-        # Sort the data mathematically
-        sorted_indices = np.argsort(re_values)
-        re_values = np.array(re_values)[sorted_indices]
-        max_amplitudes = np.array(max_amplitudes)[sorted_indices]
+        # Create Plot
+        fig, ax1 = plt.subplots(figsize=(10, 6))
 
-        # Plot the Resonance Bell Curve
-        plt.figure(figsize=(10, 6))
-        plt.plot(re_values, max_amplitudes, marker='o', linestyle='-', linewidth=2, color='b')
-        plt.title('Phase 1: Lock-in Resonance Curve', fontsize=14, fontweight='bold')
-        plt.xlabel('Wind Speed (Reynolds Number)', fontsize=12)
-        plt.ylabel('Maximum Tip Deflection ($\Delta X$)', fontsize=12)
-        plt.fill_between(re_values, max_amplitudes, alpha=0.2, color='b')
-        plt.ylim(max(max_amplitudes)*0.8, max(max_amplitudes)*1.2)
+        # Plot RMS Amplitude
+        ax1.plot(sorted_re, rms_amps, marker='o', linestyle='-', color='#1f77b4', linewidth=2.5, markersize=8, label='Displacement std (Last 20%)')
         
-        # Save and close
-        output_path = os.path.join(self.output_dir, "Phase1_Resonance_Curve.png")
-        plt.savefig(output_path, dpi=300, bbox_inches='tight')
+        # Highlight the optimal Reynolds number
+        ax1.plot(optimal_re, optimal_amp, marker='*', color='#ff7f0e', markersize=18, label=f'Optimal Design Point (Re={optimal_re})', zorder=5)
+
+        # Formatting
+        ax1.set_xlabel('Reynolds Number (Re)', fontsize=12)
+        ax1.set_ylabel('Sustained Vibration Amplitude (std) [m]', fontsize=12)
+        ax1.set_title('Phase 1: Resonance Lock-in Profile', fontsize=14, fontweight='bold')
+        ax1.grid(True, linestyle='--', alpha=0.7)
+        ax1.legend(loc='upper right', fontsize=11)
+
+        # Set Y-axis limits dynamically based on the global maximum found
+        padding = global_max_abs * 0.1 if global_max_abs > 0 else 0.1
+        # Zorg dat de as start bij 0, en hoog genoeg is voor de piek
+        ax1.set_ylim(0, max(rms_amps) + padding)
+
+        plt.tight_layout()
+        output_path = os.path.join(self.output_dir, 'Phase1_Optimal_Reynolds_Proof.png')
+        plt.savefig(output_path, dpi=300)
         plt.close()
+        
         print(f"Saved {output_path}")
+        print(f"-> Discovered Optimal Reynolds Number: {optimal_re}")
 
     def analyze_phase_2_materials(self):
         """Phase 2: Compares material deflection and calculates Mechanical Power Proxy."""
@@ -83,15 +176,11 @@ class TurbineDataAnalyzer:
             print("No Phase 2 files found. Skipping.")
             return
 
-        # VERBETERING: Twee plots onder elkaar. 
-        # ax1 = het totaaloverzicht, ax2 = een ingezoomd stuk voor leesbaarheid (lost de TODO op)
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), sharex=False)
         
-        # Store results for a performance leaderboard
         performance_data = []
         
         for file in files:
-            # Maak de naam netjes voor de legenda (bijv. "P2_PVC_Plastic.csv" -> "PVC Plastic")
             raw_name = os.path.basename(file).replace('P2_', '').replace('.csv', '')
             mat_name = raw_name.replace('_', ' ')
             
@@ -103,7 +192,7 @@ class TurbineDataAnalyzer:
             if plot_data.empty:
                 continue
 
-            # 1. Calculate Amplitude (A)
+            # 1. Calculate Amplitude (A) - Gebruik exact jouw kolomnaam
             amplitude = plot_data['Deflection_dX'].abs().mean()
             
             # 2. Calculate Frequency (f)
@@ -118,26 +207,26 @@ class TurbineDataAnalyzer:
             performance_data.append({
                 'Material': mat_name,
                 'Amplitude': amplitude,
-                'Frequency': frequency * 1000, # Scaled up for readability
+                'Frequency': frequency * 1000, 
                 'Power_Proxy': power_proxy
             })
             
-            # TOP PLOT: Volledige overzicht (gebruik lagere alpha/dikte zodat het niet één dikke vlek wordt)
+            # TOP PLOT: Volledige overzicht
             ax1.plot(plot_data['Step'], plot_data['Deflection_dX'], label=mat_name, linewidth=1.0, alpha=0.7)
 
-            # BOTTOM PLOT: Zoom in op een specifiek tijdsframe (bijv. stap 5000 tot 6000)
+            # BOTTOM PLOT: Zoom in op een specifiek tijdsframe (ook Deflection_dX gebruiken)
             zoom_data = df[(df['Step'] > 5000) & (df['Step'] < 6000)].copy()
             ax2.plot(zoom_data['Step'], zoom_data['Deflection_dX'], label=mat_name, linewidth=2.0)
 
         # Plot Formatting: Top Plot (Full Range)
         ax1.set_title('Phase 2: Full Steady-State Oscillation Overview', fontsize=14, fontweight='bold')
-        ax1.set_ylabel('Tip Deflection ($\Delta X$)', fontsize=12)
+        ax1.set_ylabel(r'Displacement ($\Delta Y$)', fontsize=12)
         ax1.legend(loc='upper right')
         
         # Plot Formatting: Bottom Plot (Zoomed for Readability)
         ax2.set_title('Phase 2: Zoomed View (Clear Waveform Comparison)', fontsize=14, fontweight='bold')
         ax2.set_xlabel('Simulation Step', fontsize=12)
-        ax2.set_ylabel('Tip Deflection ($\Delta X$)', fontsize=12)
+        ax2.set_ylabel(r'Displacement ($\Delta Y$)', fontsize=12)
         ax2.legend(loc='upper right')
         
         plt.tight_layout()
@@ -147,7 +236,6 @@ class TurbineDataAnalyzer:
         
         # Print the Efficiency Leaderboard
         print("\n--- PHASE 2: MATERIAL EFFICIENCY LEADERBOARD ---")
-        # Sort by best power output
         performance_data.sort(key=lambda x: x['Power_Proxy'], reverse=True)
         
         for rank, data in enumerate(performance_data):
@@ -158,13 +246,10 @@ class TurbineDataAnalyzer:
             
         print(f"Saved {output_path}")
         leaderboard_df = pd.DataFrame(performance_data)
-        
-        # Reorder columns so they look nice in Excel/CSV
         leaderboard_df = leaderboard_df[['Material', 'Power_Proxy', 'Amplitude', 'Frequency']]
         
         csv_output_path = os.path.join(self.output_dir, "Phase2_Efficiency_Leaderboard.csv")
         leaderboard_df.to_csv(csv_output_path, index=False)
-        
         print(f"Saved numerical leaderboard to: {csv_output_path}")
 
     def analyze_phase_4_wake_interference(self):
@@ -219,14 +304,14 @@ class TurbineDataAnalyzer:
             
             # Top Plot: Overlaid waveforms
             line_style = '-' if idx == 0 else '--' # Dash downstream turbines for clarity
-            ax1.plot(t_plot['Step'], t_plot['Deflection_dX'], label=label, color=colors[idx], linestyle=line_style)
+            ax1.plot(t_plot['Step'], t_plot['deflection_dY'], label=label, color=colors[idx], linestyle=line_style)
             
             # Bottom Plot: Moving Average of Absolute Amplitude (Power Proxy)
-            power_proxy = t_plot['Deflection_dX'].abs().rolling(window=20).mean()
+            power_proxy = t_plot['deflection_dY'].abs().rolling(window=20).mean()
             ax2.plot(t_plot['Step'], power_proxy, label=label + ' Energy', color=colors[idx])
             
             # Calculate and Print Efficiency metrics
-            mean_amp = t_plot['Deflection_dX'].abs().mean()
+            mean_amp = t_plot['deflection_dY'].abs().mean()
             if idx == 0:
                 front_mean_amp = mean_amp
                 print(f"[{label}] Mean Amplitude: {mean_amp:.3f}")
@@ -253,8 +338,8 @@ class TurbineDataAnalyzer:
         print("==================================================")
         print("STARTING DATA ANALYSIS PIPELINE")
         print("==================================================")
-        # self.analyze_phase_1_resonance()
-        self.analyze_phase_2_materials()
+        self.analyze_phase_1_resonance()
+        # self.analyze_phase_2_materials()
         # self.analyze_phase_4_wake_interference()
         print("\nAll analysis complete! Check the 'analysis_plots' folder.")
 
