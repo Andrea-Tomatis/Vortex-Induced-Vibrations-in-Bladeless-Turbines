@@ -83,13 +83,18 @@ class TurbineDataAnalyzer:
             print("No Phase 2 files found. Skipping.")
             return
 
-        plt.figure(figsize=(12, 6))
+        # VERBETERING: Twee plots onder elkaar. 
+        # ax1 = het totaaloverzicht, ax2 = een ingezoomd stuk voor leesbaarheid (lost de TODO op)
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), sharex=False)
         
         # Store results for a performance leaderboard
         performance_data = []
         
         for file in files:
-            mat_name = os.path.basename(file).replace('P2_', '').replace('.csv', '')
+            # Maak de naam netjes voor de legenda (bijv. "P2_PVC_Plastic.csv" -> "PVC Plastic")
+            raw_name = os.path.basename(file).replace('P2_', '').replace('.csv', '')
+            mat_name = raw_name.replace('_', ' ')
+            
             df = pd.read_csv(file)
             
             # Analyze steady-state oscillation (ignore startup)
@@ -99,16 +104,11 @@ class TurbineDataAnalyzer:
                 continue
 
             # 1. Calculate Amplitude (A)
-            # We take the root mean square (RMS) or simple mean of the absolute peaks
             amplitude = plot_data['Deflection_dX'].abs().mean()
             
             # 2. Calculate Frequency (f)
-            # We count how many times the pole crosses the zero-axis (center point)
             zero_crossings = np.where(np.diff(np.sign(plot_data['Deflection_dX'])))[0]
-            # Two zero crossings equal one full wave cycle
             num_cycles = len(zero_crossings) / 2.0
-            
-            # Frequency = Cycles per step (or time)
             time_steps = plot_data['Step'].max() - plot_data['Step'].min()
             frequency = num_cycles / time_steps if time_steps > 0 else 0
             
@@ -122,14 +122,25 @@ class TurbineDataAnalyzer:
                 'Power_Proxy': power_proxy
             })
             
-            plt.plot(plot_data['Step'], plot_data['Deflection_dX'], label=mat_name, linewidth=1.5)
+            # TOP PLOT: Volledige overzicht (gebruik lagere alpha/dikte zodat het niet één dikke vlek wordt)
+            ax1.plot(plot_data['Step'], plot_data['Deflection_dX'], label=mat_name, linewidth=1.0, alpha=0.7)
 
-        # Plot Formatting
-        plt.title('Phase 2: Material Deflection Comparison', fontsize=14, fontweight='bold')
-        plt.xlabel('Simulation Step', fontsize=12)
-        plt.ylabel('Tip Deflection ($\Delta X$)', fontsize=12)
-        plt.legend(loc='upper right')
+            # BOTTOM PLOT: Zoom in op een specifiek tijdsframe (bijv. stap 5000 tot 6000)
+            zoom_data = df[(df['Step'] > 5000) & (df['Step'] < 6000)].copy()
+            ax2.plot(zoom_data['Step'], zoom_data['Deflection_dX'], label=mat_name, linewidth=2.0)
+
+        # Plot Formatting: Top Plot (Full Range)
+        ax1.set_title('Phase 2: Full Steady-State Oscillation Overview', fontsize=14, fontweight='bold')
+        ax1.set_ylabel('Tip Deflection ($\Delta X$)', fontsize=12)
+        ax1.legend(loc='upper right')
         
+        # Plot Formatting: Bottom Plot (Zoomed for Readability)
+        ax2.set_title('Phase 2: Zoomed View (Clear Waveform Comparison)', fontsize=14, fontweight='bold')
+        ax2.set_xlabel('Simulation Step', fontsize=12)
+        ax2.set_ylabel('Tip Deflection ($\Delta X$)', fontsize=12)
+        ax2.legend(loc='upper right')
+        
+        plt.tight_layout()
         output_path = os.path.join(self.output_dir, "Phase2_Material_Comparison.png")
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         plt.close()
@@ -148,98 +159,13 @@ class TurbineDataAnalyzer:
         print(f"Saved {output_path}")
         leaderboard_df = pd.DataFrame(performance_data)
         
-        # Reorder columns so they look nice in Excel
+        # Reorder columns so they look nice in Excel/CSV
         leaderboard_df = leaderboard_df[['Material', 'Power_Proxy', 'Amplitude', 'Frequency']]
         
         csv_output_path = os.path.join(self.output_dir, "Phase2_Efficiency_Leaderboard.csv")
         leaderboard_df.to_csv(csv_output_path, index=False)
         
         print(f"Saved numerical leaderboard to: {csv_output_path}")
-
-    def analyze_phase_3_shear_flow(self):
-        """Phase 3: Overlays Uniform vs. Shear flow and calculates performance drop."""
-        print("Analyzing Phase 3: Flow Profile Reality Check...")
-        
-        files = glob.glob(os.path.join(self.data_dir, "P3_Flow_*.csv"))
-        if len(files) < 2:
-            print("Could not find both Uniform and Shear files. Skipping.")
-            return
-
-        plt.figure(figsize=(12, 6))
-        colors = {'Uniform': '#2ca02c', 'Shear': '#d62728'}
-        
-        # Dictionary to hold the math for both flows
-        performance_metrics = {}
-
-        for file in files:
-            flow_type = os.path.basename(file).replace('P3_Flow_', '').replace('.csv', '')
-            df = pd.read_csv(file)
-            
-            # Look at a specific steady-state window
-            plot_data = df[(df['Step'] > 4000) & (df['Step'] < 8000)].copy()
-            
-            if plot_data.empty:
-                continue
-
-            # 1. Calculate the Math (Same as Phase 2)
-            amplitude = plot_data['Deflection_dX'].abs().mean()
-            
-            zero_crossings = np.where(np.diff(np.sign(plot_data['Deflection_dX'])))[0]
-            num_cycles = len(zero_crossings) / 2.0
-            time_steps = plot_data['Step'].max() - plot_data['Step'].min()
-            frequency = (num_cycles / time_steps * 1000) if time_steps > 0 else 0
-            
-            power_proxy = (amplitude ** 2) * (frequency ** 2)
-            
-            # Store it for comparison
-            performance_metrics[flow_type] = {
-                'Amplitude': amplitude,
-                'Frequency': frequency,
-                'Power_Proxy': power_proxy
-            }
-            
-            # Plot the line
-            plt.plot(plot_data['Step'], plot_data['Deflection_dX'], 
-                     label=f"{flow_type} Flow", color=colors.get(flow_type, 'blue'), linewidth=2)
-
-        # Format the Graph
-        plt.title('Phase 3: Atmospheric Boundary Layer Impact (Shear vs Uniform)', fontsize=14, fontweight='bold')
-        plt.xlabel('Simulation Step', fontsize=12)
-        plt.ylabel('Tip Deflection ($\Delta X$)', fontsize=12)
-        plt.legend()
-        
-        output_path = os.path.join(self.output_dir, "Phase3_Shear_vs_Uniform.png")
-        plt.savefig(output_path, dpi=300, bbox_inches='tight')
-        plt.close()
-        
-        # ==========================================
-        # PRINT THE QUANTITATIVE INSIGHTS
-        # ==========================================
-        print("\n--- PHASE 3: ATMOSPHERIC BOUNDARY LAYER IMPACT ---")
-        
-        if 'Uniform' in performance_metrics and 'Shear' in performance_metrics:
-            u_data = performance_metrics['Uniform']
-            s_data = performance_metrics['Shear']
-            
-            # Calculate Percentage Drops
-            amp_drop = (1.0 - (s_data['Amplitude'] / u_data['Amplitude'])) * 100
-            pow_drop = (1.0 - (s_data['Power_Proxy'] / u_data['Power_Proxy'])) * 100
-            
-            print(f"[IDEAL] Uniform Flow:")
-            print(f"    Amplitude:   {u_data['Amplitude']:.2f}")
-            print(f"    Frequency:   {u_data['Frequency']:.2f}")
-            print(f"    Power Score: {u_data['Power_Proxy']:.4f}\n")
-            
-            print(f"[REALITY] Shear Flow (Boundary Layer):")
-            print(f"    Amplitude:   {s_data['Amplitude']:.2f}")
-            print(f"    Frequency:   {s_data['Frequency']:.2f}")
-            print(f"    Power Score: {s_data['Power_Proxy']:.4f}\n")
-            
-            print(f"-> IMPACT CONCLUSION:")
-            print(f"   Moving from a wind tunnel to real-world shear flow resulted in a")
-            print(f"   {amp_drop:.1f}% reduction in amplitude and a {pow_drop:.1f}% drop in total power.")
-            
-        print(f"\nSaved Phase 3 plot to {output_path}")
 
     def analyze_phase_4_wake_interference(self):
         """Phase 4: Plots the synchronization of ANY number of twin/array turbines."""
@@ -258,13 +184,13 @@ class TurbineDataAnalyzer:
 
         df = pd.read_csv(file)
         
-        # 1. Dynamically find ALL flexible poles in the CSV
-        turbines = [name for name in df['Obj_Name'].unique() if 'FlexibleCantilever' in name]
-        
+        # 1. Dynamically find ALL turbines in the CSV
+        turbines = list(df['Obj_Name'].unique())
+
         if not turbines:
-            print("No flexible poles found in the data.")
+            print("No turbines found in the data.")
             return
-            
+
         # Sort them numerically so _0 is first, _1 is second, etc.
         turbines.sort(key=lambda x: int(x.split('_')[-1]))
         
@@ -272,7 +198,7 @@ class TurbineDataAnalyzer:
         print(f"Detected {num_turbines} turbines in the simulation array.")
 
         # Focus on the end of the simulation where flutter is fully developed
-        window_start = df['Step'].max() - 4000
+        window_start = df['Step'].max() - 10000
         
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
         
@@ -287,6 +213,7 @@ class TurbineDataAnalyzer:
             # Extract data for this specific turbine
             t_data = df[df['Obj_Name'] == t_name]
             t_plot = t_data[t_data['Step'] > window_start]
+            t_plot = t_plot[t_plot['Step'] < 18000]
             
             # Labeling
             label = "Turbine 0 (Upstream)" if idx == 0 else f"Turbine {idx} (Wake)"
@@ -327,9 +254,8 @@ class TurbineDataAnalyzer:
         print("==================================================")
         print("STARTING DATA ANALYSIS PIPELINE")
         print("==================================================")
-        self.analyze_phase_1_resonance()
-        self.analyze_phase_2_materials()
-        self.analyze_phase_3_shear_flow()
+        # self.analyze_phase_1_resonance()
+        #self.analyze_phase_2_materials()
         self.analyze_phase_4_wake_interference()
         print("\nAll analysis complete! Check the 'analysis_plots' folder.")
 
