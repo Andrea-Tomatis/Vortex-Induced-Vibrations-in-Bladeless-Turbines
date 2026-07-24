@@ -211,10 +211,10 @@ class TurbineDataAnalyzer:
                 'Power_Proxy': power_proxy
             })
             
-            # TOP PLOT: Volledige overzicht
+            # TOP PLOT: Volledige overzicht (gebruik lagere alpha/dikte zodat het niet één dikke vlek wordt)
             ax1.plot(plot_data['Step'], plot_data['Deflection_dX'], label=mat_name, linewidth=1.0, alpha=0.7)
 
-            # BOTTOM PLOT: Zoom in op een specifiek tijdsframe (ook Deflection_dX gebruiken)
+            # BOTTOM PLOT: Zoom in op een specifiek tijdsframe (bijv. stap 5000 tot 6000)
             zoom_data = df[(df['Step'] > 5000) & (df['Step'] < 6000)].copy()
             ax2.plot(zoom_data['Step'], zoom_data['Deflection_dX'], label=mat_name, linewidth=2.0)
 
@@ -246,6 +246,8 @@ class TurbineDataAnalyzer:
             
         print(f"Saved {output_path}")
         leaderboard_df = pd.DataFrame(performance_data)
+        
+        # Reorder columns so they look nice in Excel/CSV
         leaderboard_df = leaderboard_df[['Material', 'Power_Proxy', 'Amplitude', 'Frequency']]
         
         csv_output_path = os.path.join(self.output_dir, "Phase2_Efficiency_Leaderboard.csv")
@@ -283,7 +285,7 @@ class TurbineDataAnalyzer:
         print(f"Detected {num_turbines} turbines in the simulation array.")
 
         # Focus on the end of the simulation where flutter is fully developed
-        window_start = df['Step'].max() - 4000
+        window_start = df['Step'].max() - 10000
         
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
         
@@ -298,6 +300,7 @@ class TurbineDataAnalyzer:
             # Extract data for this specific turbine
             t_data = df[df['Obj_Name'] == t_name]
             t_plot = t_data[t_data['Step'] > window_start]
+            t_plot = t_plot[t_plot['Step'] < 18000]
             
             # Labeling
             label = "Turbine 0 (Upstream)" if idx == 0 else f"Turbine {idx} (Wake)"

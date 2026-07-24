@@ -190,7 +190,7 @@ class BladelessTurbineTestSuite:
                 "ny": ny, 
                 "re": float(re), 
                 "steps": steps,
-                "walls": True,              
+                "walls": False,             # Open boundaries to prevent unnatural wall stabilization
                 "flow": "uniform",
                 "video": True, 
                 "video_out": f"{self.output_dir}/{name}.mp4",
@@ -343,9 +343,9 @@ class BladelessTurbineTestSuite:
         simulations = [{
             "name": "P4_Twin_Turbines_InLine",
             "nx": 1200, 
-            "ny": 200, 
+            "ny": 300, 
             "re": optimal_re, 
-            "steps": 12000,
+            "steps": 19000,
             "walls": True, 
             "flow": "uniform",
             "video": True, 
