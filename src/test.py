@@ -165,12 +165,12 @@ class BladelessTurbineTestSuite:
         stiffness = 0.0000355 
         mass = 50.0        
 
-        re_configs = {
-            35:  {"steps": 20000, "nx": 600},   
+        re_configs = {  
             150: {"steps": 20000, "nx": 600},   
-            250: {"steps": 20000, "nx": 800},   
+            350: {"steps": 20000, "nx": 800},   
             500: {"steps": 20000, "nx": 1000},  
-            800: {"steps": 20000, "nx": 1200}   
+            800: {"steps": 20000, "nx": 1200},
+            1000: {"steps": 20000, "nx": 1400},   
         }
 
         re_points = list(re_configs.keys())
@@ -205,7 +205,7 @@ class BladelessTurbineTestSuite:
                         "size": size,
                         "stiffness": stiffness,
                         "mass": mass,
-                        "damping": 0.002
+                        "damping": 0.2
                     }
                 ]
             })

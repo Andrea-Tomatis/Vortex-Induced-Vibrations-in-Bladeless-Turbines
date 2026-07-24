@@ -339,8 +339,8 @@ class TurbineDataAnalyzer:
         print("STARTING DATA ANALYSIS PIPELINE")
         print("==================================================")
         self.analyze_phase_1_resonance()
-        # self.analyze_phase_2_materials()
-        # self.analyze_phase_4_wake_interference()
+        #self.analyze_phase_2_materials()
+        #self.analyze_phase_4_wake_interference()
         print("\nAll analysis complete! Check the 'analysis_plots' folder.")
 
 if __name__ == "__main__":
