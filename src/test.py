@@ -96,36 +96,93 @@ class BladelessTurbineTestSuite:
         print(f"\n[Test Suite] Generated {filename}. Launching batch runner...")
         run_batch_from_json(filepath)
 
+    # def run_phase_1_lock_in_sweep(self):
+    #     """Phase 1: Sweep Reynolds numbers covering Steady State to High-Re Unsteady flow."""
+    #     print("Generating Phase 1: Lock-in & Transition Sweep...")
+    #     simulations = []
+
+    #     # Structural parameters
+    #     stiffness = 0.0114
+    #     size = 15          # Cylinder radius -> D = 30 lattice units
+    #     mass = solve_mass_for_reduced_velocity(size, stiffness, u_star=5.89)
+
+    #     # Map each Reynolds number to appropriate step counts, domain sizes, and video intervals
+    #     re_configs = {
+    #         35:  {"steps": 8000,  "nx": 600,  "ny": 200},   # Steady state (rapid convergence)
+    #         150: {"steps": 8000,  "nx": 600,  "ny": 200},   # Laminar Von Karman Street
+    #         250: {"steps": 12000, "nx": 700,  "ny": 250},   # Peak Structural Lock-In
+    #         500: {"steps": 15000, "nx": 900,  "ny": 300},   # Shear-layer roll-up transition
+    #         800: {"steps": 18000, "nx": 1000, "ny": 300}    # Highly unsteady 2D turbulent wake
+    #     }
+
+    #     re_points = list(re_configs.keys())
+    #     report_dynamics("P1 baseline", size, stiffness, mass, Re=re_points)
+
+    #     for re, cfg in re_configs.items():
+    #         name = f"P1_Re_{re}"
+    #         steps = cfg["steps"]
+    #         nx = cfg["nx"]
+    #         ny = cfg["ny"]
+            
+    #         # Keep video frames to ~400-600 rendered frames (~15-20s playback at 30fps)
+    #         video_interval = max(5, steps // 1200)
+
+    #         simulations.append({
+    #             "name": name,
+    #             "nx": nx, 
+    #             "ny": ny, 
+    #             "re": float(re), 
+    #             "steps": steps,
+    #             "walls": False,             # Open boundaries to prevent unnatural wall stabilization
+    #             "flow": "uniform",
+    #             "video": True, 
+    #             "video_out": f"{self.output_dir}/{name}.mp4",
+    #             "video_interval": video_interval,
+    #             "csv": True, 
+    #             "csv_out": f"{self.output_dir}/{name}.csv",
+    #             "objects": [
+    #                 {
+    #                     "shape": "flexible_cylinder",
+    #                     "cx": int(nx * 0.25),  # Dynamically position cylinder at 25% domain width
+    #                     "cy": int(ny * 0.50),  # Centred in the channel
+    #                     "size": size,
+    #                     "stiffness": stiffness,
+    #                     "mass": mass,
+    #                     "damping": 0.002
+    #                 }
+    #             ]
+    #         })
+
+    #     self.write_and_run("phase1_sweep.json", {"simulations": simulations})
+    
+    # New version:
     def run_phase_1_lock_in_sweep(self):
         """Phase 1: Sweep Reynolds numbers covering Steady State to High-Re Unsteady flow."""
-        print("Generating Phase 1: Lock-in & Transition Sweep...")
+        print("Generating Phase 1: Lock-in & Transition Sweep (Baseline PVC)...")
         simulations = []
 
-        # Structural parameters
-        stiffness = 0.0114
-        size = 15          # Cylinder radius -> D = 30 lattice units
-        mass = solve_mass_for_reduced_velocity(size, stiffness, u_star=5.89)
+        size = 15          
+        stiffness = 0.0000355 
+        mass = 50.0        
 
-        # Map each Reynolds number to appropriate step counts, domain sizes, and video intervals
-        re_configs = {
-            35:  {"steps": 8000,  "nx": 600,  "ny": 200},   # Steady state (rapid convergence)
-            150: {"steps": 8000,  "nx": 600,  "ny": 200},   # Laminar Von Karman Street
-            250: {"steps": 12000, "nx": 700,  "ny": 250},   # Peak Structural Lock-In
-            500: {"steps": 15000, "nx": 900,  "ny": 300},   # Shear-layer roll-up transition
-            800: {"steps": 18000, "nx": 1000, "ny": 300}    # Highly unsteady 2D turbulent wake
+        re_configs = {  
+            150: {"steps": 20000, "nx": 600},   
+            350: {"steps": 20000, "nx": 800},   
+            500: {"steps": 20000, "nx": 1000},  
+            800: {"steps": 20000, "nx": 1200},
+            1000: {"steps": 20000, "nx": 1400},   
         }
 
         re_points = list(re_configs.keys())
-        report_dynamics("P1 baseline", size, stiffness, mass, Re=re_points)
+        report_dynamics("P1 baseline PVC", size, stiffness, mass, Re=re_points)
 
         for re, cfg in re_configs.items():
             name = f"P1_Re_{re}"
             steps = cfg["steps"]
             nx = cfg["nx"]
-            ny = cfg["ny"]
+            ny = 200 
             
-            # Keep video frames to ~400-600 rendered frames (~15-20s playback at 30fps)
-            video_interval = max(5, steps // 1200)
+            video_interval = max(5, steps // 800) 
 
             simulations.append({
                 "name": name,
@@ -143,12 +200,12 @@ class BladelessTurbineTestSuite:
                 "objects": [
                     {
                         "shape": "flexible_cylinder",
-                        "cx": int(nx * 0.25),  # Dynamically position cylinder at 25% domain width
-                        "cy": int(ny * 0.50),  # Centred in the channel
+                        "cx": 200,             
+                        "cy": int(ny * 0.50),  
                         "size": size,
                         "stiffness": stiffness,
                         "mass": mass,
-                        "damping": 0.002
+                        "damping": 0.2
                     }
                 ]
             })
@@ -327,8 +384,8 @@ if __name__ == "__main__":
 
     # You can run individual phases for quick testing:
     # test_suite.run_phase_2_material_optimization()
-    # test_suite.run_phase_1_lock_in_sweep()
-    test_suite.run_phase_4_wake_interference()
+    test_suite.run_phase_1_lock_in_sweep()
+    # test_suite.run_phase_4_wake_interference()
 
     # Or let it run overnight for the complete dataset:
     #test_suite.execute_full_thesis_roadmap()

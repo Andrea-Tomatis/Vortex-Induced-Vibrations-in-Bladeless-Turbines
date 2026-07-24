@@ -5,123 +5,123 @@
             "nx": 600,
             "ny": 200,
             "re": 150.0,
-            "steps": 6000,
+            "steps": 20000,
             "walls": true,
             "flow": "uniform",
             "video": true,
             "video_out": "../results/P1_Re_150.mp4",
+            "video_interval": 25,
             "csv": true,
             "csv_out": "../results/P1_Re_150.csv",
             "objects": [
                 {
-                    "shape": "flexible_pole",
+                    "shape": "flexible_cylinder",
                     "cx": 200,
-                    "cy": 1,
-                    "width": 10,
-                    "height": 100,
-                    "stiffness": 0.0114,
-                    "mass": 0.095,
-                    "damping": 0.002
-                }
-            ]
-        },
-        {
-            "name": "P1_Re_200",
-            "nx": 600,
-            "ny": 200,
-            "re": 200.0,
-            "steps": 6000,
-            "walls": true,
-            "flow": "uniform",
-            "video": true,
-            "video_out": "../results/P1_Re_200.mp4",
-            "csv": true,
-            "csv_out": "../results/P1_Re_200.csv",
-            "objects": [
-                {
-                    "shape": "flexible_pole",
-                    "cx": 200,
-                    "cy": 1,
-                    "width": 10,
-                    "height": 100,
-                    "stiffness": 0.0114,
-                    "mass": 0.095,
-                    "damping": 0.002
-                }
-            ]
-        },
-        {
-            "name": "P1_Re_250",
-            "nx": 600,
-            "ny": 200,
-            "re": 250.0,
-            "steps": 6000,
-            "walls": true,
-            "flow": "uniform",
-            "video": true,
-            "video_out": "../results/P1_Re_250.mp4",
-            "csv": true,
-            "csv_out": "../results/P1_Re_250.csv",
-            "objects": [
-                {
-                    "shape": "flexible_pole",
-                    "cx": 200,
-                    "cy": 1,
-                    "width": 10,
-                    "height": 100,
-                    "stiffness": 0.0114,
-                    "mass": 0.095,
-                    "damping": 0.002
-                }
-            ]
-        },
-        {
-            "name": "P1_Re_300",
-            "nx": 600,
-            "ny": 200,
-            "re": 300.0,
-            "steps": 6000,
-            "walls": true,
-            "flow": "uniform",
-            "video": true,
-            "video_out": "../results/P1_Re_300.mp4",
-            "csv": true,
-            "csv_out": "../results/P1_Re_300.csv",
-            "objects": [
-                {
-                    "shape": "flexible_pole",
-                    "cx": 200,
-                    "cy": 1,
-                    "width": 10,
-                    "height": 100,
-                    "stiffness": 0.0114,
-                    "mass": 0.095,
-                    "damping": 0.002
+                    "cy": 100,
+                    "size": 15,
+                    "stiffness": 3.55e-05,
+                    "mass": 50.0,
+                    "damping": 0.2
                 }
             ]
         },
         {
             "name": "P1_Re_350",
-            "nx": 600,
+            "nx": 800,
             "ny": 200,
             "re": 350.0,
-            "steps": 6000,
+            "steps": 20000,
             "walls": true,
             "flow": "uniform",
             "video": true,
             "video_out": "../results/P1_Re_350.mp4",
+            "video_interval": 25,
             "csv": true,
             "csv_out": "../results/P1_Re_350.csv",
             "objects": [
                 {
-                    "shape": "flexible_pole",
+                    "shape": "flexible_cylinder",
                     "cx": 200,
-                    "cy": 1,
-                    "width": 10,
-                    "height": 100,
-                    "stiffness": 0.0114,
-                    "mass": 0.095,
-                    "damping": 0.002
+                    "cy": 100,
+                    "size": 15,
+                    "stiffness": 3.55e-05,
+                    "mass": 50.0,
+                    "damping": 0.2
+                }
+            ]
+        },
+        {
+            "name": "P1_Re_500",
+            "nx": 1000,
+            "ny": 200,
+            "re": 500.0,
+            "steps": 20000,
+            "walls": true,
+            "flow": "uniform",
+            "video": true,
+            "video_out": "../results/P1_Re_500.mp4",
+            "video_interval": 25,
+            "csv": true,
+            "csv_out": "../results/P1_Re_500.csv",
+            "objects": [
+                {
+                    "shape": "flexible_cylinder",
+                    "cx": 200,
+                    "cy": 100,
+                    "size": 15,
+                    "stiffness": 3.55e-05,
+                    "mass": 50.0,
+                    "damping": 0.2
+                }
+            ]
+        },
+        {
+            "name": "P1_Re_800",
+            "nx": 1200,
+            "ny": 200,
+            "re": 800.0,
+            "steps": 20000,
+            "walls": true,
+            "flow": "uniform",
+            "video": true,
+            "video_out": "../results/P1_Re_800.mp4",
+            "video_interval": 25,
+            "csv": true,
+            "csv_out": "../results/P1_Re_800.csv",
+            "objects": [
+                {
+                    "shape": "flexible_cylinder",
+                    "cx": 200,
+                    "cy": 100,
+                    "size": 15,
+                    "stiffness": 3.55e-05,
+                    "mass": 50.0,
+                    "damping": 0.2
+                }
+            ]
+        },
+        {
+            "name": "P1_Re_1000",
+            "nx": 1400,
+            "ny": 200,
+            "re": 1000.0,
+            "steps": 20000,
+            "walls": true,
+            "flow": "uniform",
+            "video": true,
+            "video_out": "../results/P1_Re_1000.mp4",
+            "video_interval": 25,
+            "csv": true,
+            "csv_out": "../results/P1_Re_1000.csv",
+            "objects": [
+                {
+                    "shape": "flexible_cylinder",
+                    "cx": 200,
+                    "cy": 100,
+                    "size": 15,
+                    "stiffness": 3.55e-05,
+                    "mass": 50.0,
+                    "damping": 0.2
                 }
             ]
         }
